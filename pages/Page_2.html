@@ -1,0 +1,35 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Led 2 control using ESP32 with SSI</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1>
+<meta http-equiv="Refresh" content="10">
+</head>
+<body>
+
+<p>Local Date & Time = %LOCAL_DATE_TIME%.</p>
+
+<p><table border="1"><tr>
+<td><strong>Led 2 State: </strong><span style='color:red;'>%LED_2_STATE%</span></td>
+<td><img src="/led_%LED_2_STATE%.gif"></td>
+</tr></table></p>
+
+<p><table border="1"><tr>
+<td><strong>Led 2 Action:</strong> to turn this led
+    <span style='color:red;'>%LED_2_STATE_INVERSE%</span>, click on the following image:</td>
+<td><form action="/led2/%LED_2_STATE_INVERSE%">
+    <input type="image" src="/led_%LED_2_STATE_INVERSE%.gif" alt="Submit">
+</form></td>
+</tr></table></p>
+
+<p><table border="1">
+<tr><td><strong>Text box 2, current message:</strong> "%TEXT_BOX_2_MESSAGE%".</td></tr>
+<tr><td><form action="/text_box_2">
+     <strong>New message: </strong>
+     <input type="text" name="input" value="-- Type here the new message" size="25">
+     <input type="submit" value="Click here">
+</form></td></tr>
+</table></p>
+
+</body>
+</html>
