@@ -1,5 +1,5 @@
 /*
- * CLNJ, 07/07/2025
+ * CLNJ, 13/07/2024
  */
 
 #include <WiFi.h>
@@ -20,6 +20,15 @@ LiquidCrystal_I2C lcd(0x27, Ncols, Nrows); // I2C address: 0x27; Display size: 1
 #define LED_2_PIN 26   // ESP32 pin IO26 connected to LED 2
 #define LED_ON_BOARD  2
 
+// Potentiometer adjusted Led:
+#define POT_PIN 34
+#define LED_3_PIN 27
+// PWM
+const int pwmFreq = 5000;
+const int pwmChannel = 0;
+const int pwmResolution = 8;
+int pwmDutyCycle = 0;
+
 #define Filename "/text_box_data.txt"
 
 //const char* ntpServer = "pool.ntp.org";
@@ -30,8 +39,8 @@ char Local_Date_Time[50]; //50 chars should be enough
 struct tm timeinfo;
 
 // Replace with your network credentials
-const char* ssid     = "LMI_2";
-const char* password = "ea254@ea254";
+const char* ssid     = "nnn";
+const char* password = "nnn";
 
 AsyncWebServer server(80);
 
@@ -44,6 +53,10 @@ String Text_Box_2_Message = "TB2 message not defined";
 
 const char* PARAM_INPUT = "input";
 String ledstate, ledstate_inverse;
+
+// For PWM info display
+String pwmDutyCycleStr;
+String pwmFrequencyStr;
 
 // Function to replace the placeholders
 String processor(const String& var){
@@ -85,6 +98,13 @@ String processor(const String& var){
   if(var == "REMOTE_CLIENT_IP"){
     return Remote_Client_IP;
   }
+  if (var == "PWM_DUTY_CYCLE") {
+    int percent = map(pwmDutyCycle, 0, 255, 0, 100);
+    return String(percent);
+  }
+  if (var == "PWM_FREQUENCY"){
+    return String(pwmFreq);
+  }
 
   return String();
 }
@@ -103,6 +123,11 @@ void setup() {
   digitalWrite(LED_2_PIN, Led_2_State);
   pinMode(LED_ON_BOARD, OUTPUT);
   digitalWrite(LED_ON_BOARD, HIGH);
+  //LED3 and PWM pot
+  pinMode(LED_3_PIN, OUTPUT);
+  pinMode(POT_PIN, INPUT);
+  // PWM setup
+  ledcAttachChannel(LED_3_PIN, pwmFreq, pwmResolution, pwmChannel);
 
   // Connect to Wi-Fi
   WiFi.begin(ssid, password);
@@ -165,25 +190,49 @@ void setup() {
   // Generate an output for each possible file request or command sent to the web server
   // home page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    Serial.println("GET /index.html");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("/index.html");
-    request->send(LittleFS, "/index.html", "text/html");
+    Remote_Client_IP = request->client()->remoteIP().toString();
+    Serial.println("GET /home.html");
+    lcd.clear(); lcd.setCursor(0,0); lcd.print("/home.html");
+    request->send(LittleFS, "/home.html", String(), false, processor);
   });
-  server.on("/frame_menu.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    Serial.println("GET /frame_menu.html");
-    request->send(LittleFS, "/frame_menu.html", "text/html");
-  });
-  server.on("/Page_1.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+
+  server.on("/home.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP=request->client()->remoteIP().toString();
-    Serial.println("GET /Page_1.html");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("/Page_1.html");
-    request->send(LittleFS, "/Page_1.html", String(), false, processor);
+    Serial.println("GET /home.html");
+    lcd.clear(); lcd.setCursor(0,0); lcd.print("/home.html");
+    request->send(LittleFS, "/home.html", String(), false, processor);
   });
-  server.on("/Page_2.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-    Serial.println("GET /Page_2.html");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("/Page_2.html");
-    request->send(LittleFS, "/Page_2.html", String(), false, processor);
+  server.on("/history.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Remote_Client_IP = request->client()->remoteIP().toString();
+    request->send(LittleFS, "/history.html", "text/html");
   });
+  server.on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Remote_Client_IP = request->client()->remoteIP().toString();
+    request->send(LittleFS, "/settings.html", "text/html");
+  });
+
+ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
+    int percent = map(pwmDutyCycle, 0, 255, 0, 100);
+    String html = "<!DOCTYPE html><html><head>"
+                  "<meta http-equiv='refresh' content='1'>"
+                  "<style>"
+                  ".bar { width:100%; background:#444; border-radius:4px; height:20px; }"
+                  ".fill { background:#ffc107; height:20px; border-radius:4px; width:" + String(percent) + "%; }"
+                  "</style>"
+                  "</head><body>"
+                  "<div class='bar'><div class='fill'></div></div>"
+                  "<p style='text-align:center;margin:0;font-size:14px;color:#fff;'>" + String(percent) + "%</p>"
+                  "</body></html>";
+    request->send(200, "text/html", html);
+  });
+
+  //pot
+  server.on("/update_pwm", HTTP_GET, [](AsyncWebServerRequest *request) {
+  Remote_Client_IP = request->client()->remoteIP().toString();
+  request->send(LittleFS, "/home.html", String(), false, processor);
+  });
+
+
   //server.on("/teste.txt", HTTP_GET, [](AsyncWebServerRequest *request) {
   server.on(Filename, HTTP_GET, [](AsyncWebServerRequest *request) {
     Serial.println("GET " + String(Filename));
@@ -196,26 +245,26 @@ void setup() {
     Led_1_State = HIGH; digitalWrite(LED_1_PIN, Led_1_State);
     Serial.println("GET /led1/on");
     lcd.clear(); lcd.setCursor(0,0); lcd.print("/led1/on");
-    request->send(LittleFS, "/Page_1.html", String(), false, processor);
+    request->send(LittleFS, "/home.html", String(), false, processor);
   });
   server.on("/led1/off", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_1_State = LOW; digitalWrite(LED_1_PIN, Led_1_State);
     Serial.println("GET /led1/off");
     lcd.clear(); lcd.setCursor(0,0); lcd.print("/led1/off");
-    request->send(LittleFS, "/Page_1.html", String(), false, processor);
+    request->send(LittleFS, "/home.html", String(), false, processor);
   });
   // Route to control LED 2
   server.on("/led2/on", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_2_State = HIGH; digitalWrite(LED_2_PIN, Led_2_State);
     Serial.println("GET /led2/on");
     lcd.clear(); lcd.setCursor(0,0); lcd.print("/led2/on");
-    request->send(LittleFS, "/Page_2.html", String(), false, processor);
+    request->send(LittleFS, "/home.html", String(), false, processor);
   });
   server.on("/led2/off", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_2_State = LOW; digitalWrite(LED_2_PIN, Led_2_State);
     Serial.println("GET /led2/off");
     lcd.clear(); lcd.setCursor(0,0); lcd.print("/led2/off");
-    request->send(LittleFS, "/Page_2.html", String(), false, processor);
+    request->send(LittleFS, "/home.html", String(), false, processor);
   });
 
   // Send a GET request to <ESP_IP>/text_box_1?input=<inputMessage>
@@ -237,7 +286,7 @@ void setup() {
     getLocalTime(&timeinfo);
     strftime(Local_Date_Time, sizeof(Local_Date_Time), "%d/%m/%Y, %H:%M:%S", &timeinfo);
     appendFile(LittleFS, Filename, (String(Local_Date_Time) + ", Text Box 1: " + inputMessage + "\r\n").c_str()); //Append data to the file
-    request->send(LittleFS, "/Page_1.html", String(), false, processor);
+    request->send(LittleFS, "/home.html", String(), false, processor);
   });
   // Send a GET request to <ESP_IP>/text_box_2?input=<inputMessage>
   server.on("/text_box_2", HTTP_GET, [] (AsyncWebServerRequest *request) {
@@ -258,7 +307,7 @@ void setup() {
     getLocalTime(&timeinfo);
     strftime(Local_Date_Time, sizeof(Local_Date_Time), "%d/%m/%Y, %H:%M:%S", &timeinfo);
     appendFile(LittleFS, Filename, (String(Local_Date_Time) + ", Text Box 2: " + inputMessage + "\r\n").c_str()); //Append data to the file
-    request->send(LittleFS, "/Page_2.html", String(), false, processor);
+    request->send(LittleFS, "/home.html", String(), false, processor);
   });
 
   // Serving image files
@@ -294,6 +343,13 @@ void loop() {
   delay(500);
   digitalWrite(LED_ON_BOARD,LOW);
   delay(500);
+
+  // Update PWM brightness
+  int potValue = analogRead(POT_PIN);
+  pwmDutyCycle = map(potValue, 0, 4095, 0, 255);
+  ledcWriteChannel(pwmChannel, pwmDutyCycle);
+  Serial.println(analogRead(POT_PIN));
+
 }
 
 // Functions for creating, appending, reading and deleting a file
@@ -352,4 +408,3 @@ void deleteFile(fs::FS &fs, const char * path){
     Serial.println("- delete failed.");
   }
 }
-
