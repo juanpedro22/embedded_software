@@ -39,8 +39,8 @@ char Local_Date_Time[50]; //50 chars should be enough
 struct tm timeinfo;
 
 // Replace with your network credentials
-const char* ssid     = "nnn";
-const char* password = "nnn";
+const char* ssid     = "ccccc";
+const char* password = "cc";
 
 AsyncWebServer server(80);
 
@@ -100,6 +100,8 @@ String processor(const String& var){
   }
   if (var == "PWM_DUTY_CYCLE") {
     int percent = map(pwmDutyCycle, 0, 255, 0, 100);
+    Serial.print("DEBUG PWM: ");
+    Serial.println(percent);
     return String(percent);
   }
   if (var == "PWM_FREQUENCY"){
@@ -211,26 +213,18 @@ void setup() {
     request->send(LittleFS, "/settings.html", "text/html");
   });
 
- server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
-    int percent = map(pwmDutyCycle, 0, 255, 0, 100);
-    String html = "<!DOCTYPE html><html><head>"
-                  "<meta http-equiv='refresh' content='1'>"
-                  "<style>"
-                  ".bar { width:100%; background:#444; border-radius:4px; height:20px; }"
-                  ".fill { background:#ffc107; height:20px; border-radius:4px; width:" + String(percent) + "%; }"
-                  "</style>"
-                  "</head><body>"
-                  "<div class='bar'><div class='fill'></div></div>"
-                  "<p style='text-align:center;margin:0;font-size:14px;color:#fff;'>" + String(percent) + "%</p>"
-                  "</body></html>";
+  //pot
+server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
+  int percent = map(pwmDutyCycle, 0, 255, 0, 100);
+    String html = 
+        "<meta http-equiv='refresh' content='2'>"
+        "<div class='progress' style='height:25px;'>"
+          "<div class='progress-bar bg-warning' role='progressbar' style='width:" + String(percent) + "%;'>"
+          + String(percent) + "%</div>"
+        "</div>";
     request->send(200, "text/html", html);
   });
-
-  //pot
-  server.on("/update_pwm", HTTP_GET, [](AsyncWebServerRequest *request) {
-  Remote_Client_IP = request->client()->remoteIP().toString();
-  request->send(LittleFS, "/home.html", String(), false, processor);
-  });
+  
 
 
   //server.on("/teste.txt", HTTP_GET, [](AsyncWebServerRequest *request) {
