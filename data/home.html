@@ -129,6 +129,60 @@ body {
       </div>
     </div>
 
+    <!-- ServoMotor Card -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title">ServoMotor</h5>
+            <i class="bi bi-gear-wide-connected card-icon"></i>
+          </div>
+          <p>Ângulo: <strong>%SERVO_ANGLE%°</strong></p>
+          <form action="/servo" method="GET">
+            <div class="mb-3">
+              <label for="input" class="form-label">Comandar Ângulo (0-180°):</label>
+              <input type="text" class="form-control" name="input" id="input" placeholder="Digite o ângulo..." maxlength="3" required>
+            </div>
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-warning btn-sm">Comandar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide Switch Card -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title">Chave Deslizante</h5>
+            <i class="bi bi-toggle2-%SLIDE_SWITCH_STATE% card-icon"></i>
+          </div>
+          <p>Status: <strong style="text-transform: uppercase;">%SLIDE_SWITCH_STATE%</strong></p>
+          <div class="alert alert-%SLIDE_SWITCH_STATE% == 'on' ? 'success' : 'secondary'%" role="alert">
+            <i class="bi bi-%SLIDE_SWITCH_STATE% == 'on' ? 'check-circle' : 'dash-circle'%"></i>
+            %SLIDE_SWITCH_STATE%
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alarm Status Card -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-body text-center">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title">Sistema de Alarme</h5>
+            <i class="bi bi-exclamation-triangle card-icon"></i>
+          </div>
+          <p>Total de Alarmes: <strong>%ALARM_COUNT%</strong></p>
+          <p class="mb-0">Último Alarme:</p>
+          <small class="text-muted">%LAST_ALARM_TIME%</small>
+        </div>
+      </div>
+    </div>
+
     <!-- Info Card -->
     <div class="col-12 col-lg-8">
       <div class="card shadow-sm">

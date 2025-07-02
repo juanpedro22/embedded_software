@@ -12,6 +12,20 @@ body { background-color: #121212; color: #e0e0e0; }
 .nav-link { color: #aaa; }
 .nav-link.active { background-color: #333; color: #fff; }
 .nav-link:hover { color: #fff; }
+.card {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  border: 1px solid #333;
+}
+.card-title {
+  color: #fff;
+}
+.text-warning {
+  color: #ffc107 !important;
+}
+.text-muted {
+  color: #aaa !important;
+}
 </style>
 </head>
 <body>
@@ -29,6 +43,17 @@ body { background-color: #121212; color: #e0e0e0; }
       <h2>Histórico de Alarmes</h2>
       <p>Lista de eventos e alertas ocorrerão aqui.</p>
       <!-- Conteúdo futuro -->
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Resumo do Sistema</h5>
+          <p><strong>Total de Alarmes:</strong> %ALARM_COUNT%</p>
+          <p><strong>Último Alarme:</strong> %LAST_ALARM_TIME%</p>
+        </div>
+      </div>
+      <div class="mt-4">
+        <h4>Log Detalhado</h4>
+        <p class="text-muted">Para ver o log completo, acesse: <a href="/text_box_data.txt" class="text-warning">text_box_data.txt</a></p>
+      </div>
     </main>
   </div>
 </div>

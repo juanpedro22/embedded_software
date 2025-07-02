@@ -20,6 +20,15 @@ LiquidCrystal_I2C lcd(0x27, Ncols, Nrows); // I2C address: 0x27; Display size: 1
 #define LED_2_PIN 26   // ESP32 pin IO26 connected to LED 2
 #define LED_ON_BOARD  2
 
+// Slide Switch configuration:
+#define SLIDE_SWITCH_PIN 32   // ESP32 pin IO32 connected to slide switch
+
+// Pushbutton configuration:
+#define PUSHBUTTON_PIN 18     // ESP32 pin IO33 connected to pushbutton
+
+// Buzzer configuration:
+#define BUZZER_PIN 14         // ESP32 pin IO14 connected to buzzer
+
 // Potentiometer adjusted Led:
 #define POT_PIN 34
 #define LED_3_PIN 27
@@ -46,8 +55,8 @@ char Local_Date_Time[50]; //50 chars should be enough
 struct tm timeinfo;
 
 // Replace with your network credentials
-const char* ssid     = "tttt";
-const char* password = "tttt";
+const char* ssid     = "ggg";
+const char* password = "gggg";
 
 AsyncWebServer server(80);
 
@@ -64,6 +73,33 @@ String ledstate, ledstate_inverse;
 // For PWM info display
 String pwmDutyCycleStr;
 String pwmFrequencyStr;
+
+// Servomotor configuration:
+const int Servo = 19;
+
+//PWM Servo: 
+const int ServoChannel = 1;
+const int ServoResolution = 10;
+const int Nsteps = pow(2,ServoResolution);  // duty cycle de 0 a Nsteps-1
+const float T = 20.0;                       // Periodo do sinal de PWM (em ms)
+const float Tmin = 0.5;                    // Tmin do pulso (em ms)
+const float Tmax = 2.5;                    // Tmax do pulso (em ms)
+const float Servofreq = 1000.0/T;         // frequência do sinal de PWM (em Hz)
+const int servoDutyCycleMin = Nsteps*Tmin/T;
+const int servoDutyCycleMax = Nsteps*Tmax/T;
+
+int Servo_Angle = 90; // Servo angle state (0-180 degrees)
+int Slide_Switch_State = LOW; // Slide switch state (HIGH/LOW)
+int Pushbutton_State = HIGH; // Pushbutton state (HIGH/LOW) - INPUT_PULLUP inverts logic
+int Buzzer_State = LOW; // Buzzer state (HIGH/LOW)
+
+// Alarm system variables
+volatile bool alarmTriggered = false;
+volatile unsigned long lastInterruptTime = 0;
+const unsigned long debounceDelay = 200; // 200ms debounce
+const unsigned long alarmDuration = 2000; // 2 seconds alarm duration
+int alarmCount = 0;
+String lastAlarmTime = "Nenhum alarme";
 
 // Function to replace the placeholders
 String processor(const String& var){
@@ -128,8 +164,75 @@ String processor(const String& var){
   if (var == "LED4_FREQUENCY") {
     return String(pwmled4Freq);
   }
+  if(var == "SERVO_ANGLE"){
+    return String(Servo_Angle);
+  }
+  if(var == "SLIDE_SWITCH_STATE"){
+    if(Slide_Switch_State == LOW)  // INPUT_PULLUP inverts logic
+    { return "on"; } else { return "off"; }
+  }
+  if(var == "PUSHBUTTON_STATE"){
+    if(Pushbutton_State == LOW)  // INPUT_PULLUP inverts logic
+    { return "pressed"; } else { return "released"; }
+  }
+  if(var == "BUZZER_STATE"){
+    if(Buzzer_State == HIGH)
+    { return "on"; } else { return "off"; }
+  }
+  if(var == "BUZZER_STATE_INVERSE"){
+    if(Buzzer_State == HIGH)
+    { return "off"; } else { return "on"; }
+  }
+  if(var == "ALARM_COUNT"){
+    return String(alarmCount);
+  }
+  if(var == "LAST_ALARM_TIME"){
+    return lastAlarmTime;
+  }
 
   return String();
+}
+
+// Interrupt Service Routine for pushbutton
+void IRAM_ATTR pushbuttonISR() {
+  unsigned long interruptTime = millis();
+  // Debounce: ignore if interrupt occurred too recently
+  if (interruptTime - lastInterruptTime > debounceDelay) {
+    alarmTriggered = true;
+    lastInterruptTime = interruptTime;
+  }
+}
+
+// Alarm function
+void activateAlarm() {
+  // Increment alarm counter
+  alarmCount++;
+
+  // Get current date and time for logging
+  getLocalTime(&timeinfo);
+  strftime(Local_Date_Time, sizeof(Local_Date_Time), "%d/%m/%Y, %H:%M:%S", &timeinfo);
+  lastAlarmTime = String(Local_Date_Time);
+
+  // 1. First: Display on LCD
+  Serial.printf("ALARM #%d TRIGGERED! Time: %s\n", alarmCount, lastAlarmTime.c_str());
+  lcd.clear(); 
+  lcd.setCursor(0,0); 
+  lcd.print("ALARME #" + String(alarmCount));
+  lcd.setCursor(0,1); 
+  lcd.print(lastAlarmTime.substring(0, 16)); // Display date/time (truncated to fit)
+
+  // 2. Second: Log to file
+  String logEntry = String(Local_Date_Time) + ", Alarme #" + String(alarmCount) + " - Botao pressionado\r\n";
+  appendFile(LittleFS, Filename, logEntry.c_str());
+
+  // 3. Third: Start buzzer, wait, then stop
+  Buzzer_State = HIGH;
+  digitalWrite(BUZZER_PIN, Buzzer_State);
+  delay(alarmDuration); // Wait for 2 seconds
+  Buzzer_State = LOW;
+  digitalWrite(BUZZER_PIN, Buzzer_State);
+
+  Serial.println("Buzzer deactivated after 2 seconds");
 }
 
 void setup() {
@@ -154,6 +257,19 @@ void setup() {
   //led
   pinMode(LED_4_PIN, OUTPUT);
   ledcAttachChannel(LED_4_PIN, pwmled4Freq, pwmled4Resolution, pwmled4Channel);
+
+
+  // Slide switch configuration
+  pinMode(SLIDE_SWITCH_PIN, INPUT_PULLUP);
+  // Pushbutton configuration
+  pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
+  // Attach interrupt to pushbutton (trigger on falling edge - when pressed)
+  attachInterrupt(digitalPinToInterrupt(PUSHBUTTON_PIN), pushbuttonISR, FALLING);
+  // Buzzer configuration
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, Buzzer_State);
+
+  ledcAttachChannel(Servo, Servofreq, ServoResolution, ServoChannel); // Servomotor
 
   // Connect to Wi-Fi
   WiFi.begin(ssid, password);
@@ -228,9 +344,10 @@ void setup() {
     lcd.clear(); lcd.setCursor(0,0); lcd.print("/home.html");
     request->send(LittleFS, "/home.html", String(), false, processor);
   });
-  server.on("/history.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+   server.on("/history.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();
     request->send(LittleFS, "/history.html", "text/html");
+    request->send(LittleFS, "/history.html", String(), false, processor);
   });
   server.on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();
@@ -284,49 +401,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
     lcd.clear(); lcd.setCursor(0,0); lcd.print("/led2/off");
     request->send(LittleFS, "/home.html", String(), false, processor);
   });
-
-  // Send a GET request to <ESP_IP>/text_box_1?input=<inputMessage>
-  server.on("/text_box_1", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    String inputMessage, inputParam;
-    // GET input value on <ESP_IP>/text_box_1?input=<inputMessage>
-    if (request->hasParam(PARAM_INPUT)) {
-      inputMessage = request->getParam(PARAM_INPUT)->value();
-      inputParam = PARAM_INPUT;
-    }
-    else {
-      inputMessage = "Text Box 1: wrong or null parameter.";
-      inputParam = "none";
-    }
-    Text_Box_1_Message = inputMessage;
-    Serial.print("Text Box 1: "); Serial.println(inputMessage);
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("Text Box 1:"); lcd.setCursor(0,1); lcd.print(inputMessage);
-    // Append text to the output file
-    getLocalTime(&timeinfo);
-    strftime(Local_Date_Time, sizeof(Local_Date_Time), "%d/%m/%Y, %H:%M:%S", &timeinfo);
-    appendFile(LittleFS, Filename, (String(Local_Date_Time) + ", Text Box 1: " + inputMessage + "\r\n").c_str()); //Append data to the file
-    request->send(LittleFS, "/home.html", String(), false, processor);
-  });
-  // Send a GET request to <ESP_IP>/text_box_2?input=<inputMessage>
-  server.on("/text_box_2", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    String inputMessage, inputParam;
-    // GET input value on <ESP_IP>/text_box_2?input=<inputMessage>
-    if (request->hasParam(PARAM_INPUT)) {
-      inputMessage = request->getParam(PARAM_INPUT)->value();
-      inputParam = PARAM_INPUT;
-    }
-    else {
-      inputMessage = "Text Box 2: wrong or null parameter.";
-      inputParam = "none";
-    }
-    Text_Box_2_Message = inputMessage;
-    Serial.print("Text Box 2: "); Serial.println(inputMessage);
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("Text Box 2:"); lcd.setCursor(0,1); lcd.print(inputMessage);
-    // Append text to the output file
-    getLocalTime(&timeinfo);
-    strftime(Local_Date_Time, sizeof(Local_Date_Time), "%d/%m/%Y, %H:%M:%S", &timeinfo);
-    appendFile(LittleFS, Filename, (String(Local_Date_Time) + ", Text Box 2: " + inputMessage + "\r\n").c_str()); //Append data to the file
-    request->send(LittleFS, "/home.html", String(), false, processor);
-  });
+  
 
   // Serving image files
   server.on("/led_on.gif", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -375,6 +450,74 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send(400, "text/plain", "Missing 'duty' parameter");
     }
   });
+  // Route to control ServoMotor angle
+  server.on("/servo", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    String inputMessage, inputParam;
+    // GET input value on <ESP_IP>/servo?input=<angle>
+    if (request->hasParam(PARAM_INPUT)) {
+      inputMessage = request->getParam(PARAM_INPUT)->value();
+      inputParam = PARAM_INPUT;
+
+      // Validation: check if input is empty
+      if (inputMessage.length() == 0) {
+        Serial.println("Servo: Empty input");
+        lcd.clear(); 
+        lcd.setCursor(0,0); 
+        lcd.print("Servo: Campo vazio");
+      }
+      // Validation: check if input contains only digits
+      else {
+        bool isValidNumber = true;
+        for (int i = 0; i < inputMessage.length(); i++) {
+          if (!isDigit(inputMessage.charAt(i))) {
+            isValidNumber = false;
+            break;
+          }
+        }
+
+        if (!isValidNumber) {
+          Serial.println("Servo: Invalid characters in input: " + inputMessage);
+          lcd.clear(); 
+          lcd.setCursor(0,0); 
+          lcd.print("Servo: Erro");
+          lcd.setCursor(0,1); 
+          lcd.print("Apenas numeros");
+        }
+        else {
+          int angle = inputMessage.toInt();
+          // Validate angle range (0-180 degrees)
+          if (angle >= 0 && angle <= 180) {
+            Servo_Angle = angle;
+            // Convert angle to duty cycle
+            int dutyCycle = map(angle, 0, 180, servoDutyCycleMin, servoDutyCycleMax);
+            ledcWriteChannel(ServoChannel, dutyCycle);
+
+            Serial.println("Servo angle set to: " + String(angle) + "°");
+            lcd.clear(); 
+            lcd.setCursor(0,0); 
+            lcd.print("Servo: " + String(angle) + " graus");
+          } else {
+            Serial.println("Servo: Angle out of range: " + String(angle));
+            lcd.clear(); 
+            lcd.setCursor(0,0); 
+            lcd.print("Servo: Erro");
+            lcd.setCursor(0,1); 
+            lcd.print("Range: 0-180");
+          }
+        }
+      }
+    }
+    else {
+      Serial.println("Servo: Missing parameter");
+      lcd.clear(); 
+      lcd.setCursor(0,0); 
+      lcd.print("Servo: Erro");
+      lcd.setCursor(0,1); 
+      lcd.print("Param ausente");
+    }
+
+    request->send(LittleFS, "/home.html", String(), false, processor);
+  });
 
   // Start the server
   server.begin();
@@ -397,6 +540,18 @@ void loop() {
   ledcWriteChannel(pwmChannel, pwmDutyCycle);
   Serial.println(analogRead(POT_PIN));
   
+  // Check if alarm was triggered by interrupt
+  if (alarmTriggered) {
+    alarmTriggered = false; // Reset flag
+    activateAlarm();
+  }
+  // Read slide switch state
+  int newSwitchState = digitalRead(SLIDE_SWITCH_PIN);
+  if (newSwitchState != Slide_Switch_State) {
+    Slide_Switch_State = newSwitchState;
+    Serial.print("Slide Switch: ");
+    Serial.println(Slide_Switch_State == LOW ? "ON" : "OFF");
+  }
 
   // Exibir no Serial
   //Serial.print("PWM Duty Cycle: ");
