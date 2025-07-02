@@ -39,8 +39,8 @@ char Local_Date_Time[50]; //50 chars should be enough
 struct tm timeinfo;
 
 // Replace with your network credentials
-const char* ssid     = "ccccc";
-const char* password = "cc";
+const char* ssid     = "fff";
+const char* password = "ffff";
 
 AsyncWebServer server(80);
 
@@ -103,6 +103,13 @@ String processor(const String& var){
     Serial.print("DEBUG PWM: ");
     Serial.println(percent);
     return String(percent);
+  }
+  if (var == "PWM_DUTY_STARS") {
+    int percent = map(pwmDutyCycle, 0, 255, 0, 10);
+    String stars = "";
+    for (int i = 0; i < percent; i++) stars += "▮";
+    for (int i = percent; i < 10; i++) stars += "▯";
+    return stars;
   }
   if (var == "PWM_FREQUENCY"){
     return String(pwmFreq);
