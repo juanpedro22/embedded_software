@@ -28,6 +28,13 @@ const int pwmFreq = 5000;
 const int pwmChannel = 0;
 const int pwmResolution = 8;
 int pwmDutyCycle = 0;
+//led 4 brightness control in the webpage
+#define LED_4_PIN 14
+// PWM
+const int pwmled4Freq = 5000;
+const int pwmled4Channel = 1;
+const int pwmled4Resolution = 8;
+int pwmled4DutyCycle = 0;
 
 #define Filename "/text_box_data.txt"
 
@@ -39,8 +46,8 @@ char Local_Date_Time[50]; //50 chars should be enough
 struct tm timeinfo;
 
 // Replace with your network credentials
-const char* ssid     = "fff";
-const char* password = "fff";
+const char* ssid     = "tttt";
+const char* password = "tttt";
 
 AsyncWebServer server(80);
 
@@ -114,6 +121,13 @@ String processor(const String& var){
   if (var == "PWM_FREQUENCY"){
     return String(pwmFreq);
   }
+  if (var == "LED4_DUTY_CYCLE") {
+    int percent = map(pwmled4DutyCycle, 0, 255, 0, 100);
+    return String(percent);
+  }
+  if (var == "LED4_FREQUENCY") {
+    return String(pwmled4Freq);
+  }
 
   return String();
 }
@@ -137,6 +151,9 @@ void setup() {
   pinMode(POT_PIN, INPUT);
   // PWM setup
   ledcAttachChannel(LED_3_PIN, pwmFreq, pwmResolution, pwmChannel);
+  //led
+  pinMode(LED_4_PIN, OUTPUT);
+  ledcAttachChannel(LED_4_PIN, pwmled4Freq, pwmled4Resolution, pwmled4Channel);
 
   // Connect to Wi-Fi
   WiFi.begin(ssid, password);
@@ -329,6 +346,35 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
     lcd.setCursor(0,1); lcd.print(Remote_Client_IP);
     request->send(200, "text/plain", "Received request from client with IP: " + Remote_Client_IP);
   });
+  server.on("/set_led4", HTTP_GET, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("duty")) {
+      String dutyStr = request->getParam("duty")->value();
+      int duty = dutyStr.toInt();
+      if (duty < 0) duty = 0;
+      if (duty > 100) duty = 100;
+      pwmled4DutyCycle = map(duty, 0, 100, 0, 255);
+
+      // Atualiza PWM
+  
+      ledcWriteChannel(pwmled4Channel, pwmled4DutyCycle);
+
+      // Mensagem serial
+      Serial.print("LED4 Duty set to: ");
+      Serial.print(duty);
+      Serial.println("%");
+
+      // Atualiza LCD
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("LED4 Duty Cycle:");
+      lcd.setCursor(0,1);
+      lcd.print(String(duty) + "%");
+
+      request->send(LittleFS, "/home.html", String(), false, processor);
+    } else {
+      request->send(400, "text/plain", "Missing 'duty' parameter");
+    }
+  });
 
   // Start the server
   server.begin();
@@ -350,20 +396,46 @@ void loop() {
   pwmDutyCycle = map(potValue, 0, 4095, 0, 255);
   ledcWriteChannel(pwmChannel, pwmDutyCycle);
   Serial.println(analogRead(POT_PIN));
-  // Calcular o percentual (0-100%)
-  int percent = map(pwmDutyCycle, 0, 255, 0, 100);
+  
 
   // Exibir no Serial
-  Serial.print("PWM Duty Cycle: ");
-  Serial.print(percent);
-  Serial.println("%");
+  //Serial.print("PWM Duty Cycle: ");
+  //Serial.print(percent);
+  //Serial.println("%");
 
   // Exibir no LCD
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("PWM Duty Cycle:");
-  lcd.setCursor(0,1);
-  lcd.print(String(percent) + "%");
+  //lcd.clear();
+  //lcd.setCursor(0,0);
+  //lcd.print("PWM Duty Cycle:");
+  //lcd.setCursor(0,1);
+  //lcd.print(String(percent) + "%");
+
+  // Calcular percentual (0-100%)
+  int percent = map(pwmDutyCycle, 0, 255, 0, 100);
+
+  // Variável estática para armazenar último valor
+  static int lastPercent = -1;
+
+  // Atualizar apenas se diferença >= 3
+  if (abs(percent - lastPercent) >= 3) {
+    lastPercent = percent;
+
+    // Serial
+    Serial.print("PWM Duty Cycle: ");
+    Serial.print(percent);
+    Serial.println("%");
+
+    // LCD
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("PWM Duty Cycle:");
+    lcd.setCursor(0,1);
+    lcd.print(String(percent) + "%");
+  }
+
+  
+
+
 
 
 }
