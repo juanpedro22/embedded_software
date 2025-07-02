@@ -40,7 +40,7 @@ struct tm timeinfo;
 
 // Replace with your network credentials
 const char* ssid     = "fff";
-const char* password = "ffff";
+const char* password = "fff";
 
 AsyncWebServer server(80);
 
@@ -350,6 +350,21 @@ void loop() {
   pwmDutyCycle = map(potValue, 0, 4095, 0, 255);
   ledcWriteChannel(pwmChannel, pwmDutyCycle);
   Serial.println(analogRead(POT_PIN));
+  // Calcular o percentual (0-100%)
+  int percent = map(pwmDutyCycle, 0, 255, 0, 100);
+
+  // Exibir no Serial
+  Serial.print("PWM Duty Cycle: ");
+  Serial.print(percent);
+  Serial.println("%");
+
+  // Exibir no LCD
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("PWM Duty Cycle:");
+  lcd.setCursor(0,1);
+  lcd.print(String(percent) + "%");
+
 
 }
 
