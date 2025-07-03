@@ -27,7 +27,15 @@ body { background-color: #121212; color: #e0e0e0; }
     </nav>
     <main class="col-md-10 ms-sm-auto p-4">
       <h2>Configuração do Sistema</h2>
-      <p>Aqui você pode adicionar formulários e ajustes.</p>
+      <div class="card p-3 mt-3">
+        <p><strong>IP do ESP32:</strong> %ESP_IP%</p>
+        <p><strong>MAC Address:</strong> %ESP_MAC%</p>
+        <p><strong>Rede Wi-Fi:</strong> %WIFI_SSID%</p>
+        <p><strong>Senha:</strong> %WIFI_PASSWORD%</p>
+        <p><strong>Servidor NTP:</strong> %NTP_SERVER%</p>
+        <p><strong>Fuso horário:</strong> %TIMEZONE%</p>
+        <p><strong>Email de alarme:</strong> %ALARM_EMAIL%</p>
+      </div>
       <!-- Conteúdo futuro -->
     </main>
   </div>

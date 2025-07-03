@@ -1,0 +1,7 @@
+{
+  "wifiSsid": "fff",
+  "wifiPassword": "ffff",
+  "ntpServer": "time.google.com",
+  "timezoneOffset": -3,
+  "emailAlarm": "meuemail@exemplo.com"
+}

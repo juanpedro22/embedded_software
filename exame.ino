@@ -7,6 +7,7 @@
 //See https://www.arduino.cc/reference/en/libraries/espasyncwebserver/
 #include <LittleFS.h>
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <FS.h>
 #include <time.h>
 #include <Wire.h> 
@@ -27,7 +28,7 @@ LiquidCrystal_I2C lcd(0x27, Ncols, Nrows); // I2C address: 0x27; Display size: 1
 #define PUSHBUTTON_PIN 18     // ESP32 pin IO33 connected to pushbutton
 
 // Buzzer configuration:
-#define BUZZER_PIN 14         // ESP32 pin IO14 connected to buzzer
+#define BUZZER_PIN 12         // ESP32 pin IO14 connected to buzzer
 
 // Potentiometer adjusted Led:
 #define POT_PIN 34
@@ -37,6 +38,13 @@ const int pwmFreq = 5000;
 const int pwmChannel = 0;
 const int pwmResolution = 8;
 int pwmDutyCycle = 0;
+
+String wifiSsid = "defaultSSID";
+String wifiPassword = "defaultPassword";
+String ntpServer = "time.google.com";
+int timezoneOffset = -3;  // GMT-3 por default
+String emailAlarm = "default@exemplo.com";
+
 //led 4 brightness control in the webpage
 #define LED_4_PIN 14
 // PWM
@@ -48,15 +56,14 @@ int pwmled4DutyCycle = 0;
 #define Filename "/text_box_data.txt"
 
 //const char* ntpServer = "pool.ntp.org";
-const char* ntpServer = "time.google.com";
+
 const long  gmtOffset_sec = -3*3600;
 const int   daylightOffset_sec = 0; // para 1 h use 3600;
 char Local_Date_Time[50]; //50 chars should be enough
 struct tm timeinfo;
 
-// Replace with your network credentials
-const char* ssid     = "ggg";
-const char* password = "gggg";
+
+
 
 AsyncWebServer server(80);
 
@@ -100,6 +107,60 @@ const unsigned long debounceDelay = 200; // 200ms debounce
 const unsigned long alarmDuration = 2000; // 2 seconds alarm duration
 int alarmCount = 0;
 String lastAlarmTime = "Nenhum alarme";
+
+void loadConfig() {
+  if (!LittleFS.exists("/config.json")) {
+    Serial.println("Arquivo config.json não encontrado. Usando valores padrão.");
+    return;
+  }
+
+  File configFile = LittleFS.open("/config.json", "r");
+  if (!configFile) {
+    Serial.println("Erro ao abrir config.json");
+    return;
+  }
+
+  size_t size = configFile.size();
+  if (size > 1024) {
+    Serial.println("Arquivo config.json muito grande!");
+    return;
+  }
+
+  std::unique_ptr<char[]> buf(new char[size + 1]);
+  configFile.readBytes(buf.get(), size);
+  buf[size] = '\0';
+
+  StaticJsonDocument<512> json;
+  DeserializationError error = deserializeJson(json, buf.get());
+
+  if (error) {
+    Serial.println("Erro ao parsear JSON");
+    return;
+  }
+
+  if (json.containsKey("wifiSsid")) {
+    wifiSsid = json["wifiSsid"].as<String>();
+  }
+  if (json.containsKey("wifiPassword")) {
+    wifiPassword = json["wifiPassword"].as<String>();
+  }
+  if (json.containsKey("ntpServer")) {
+    ntpServer = json["ntpServer"].as<String>();
+  }
+  if (json.containsKey("timezoneOffset")) {
+    timezoneOffset = json["timezoneOffset"].as<int>();
+  }
+  if (json.containsKey("emailAlarm")) {
+    emailAlarm = json["emailAlarm"].as<String>();
+  }
+
+  Serial.println("Configurações carregadas do JSON:");
+  Serial.println("SSID: " + wifiSsid);
+  Serial.println("Senha: " + wifiPassword);
+  Serial.println("NTP: " + ntpServer);
+  Serial.println("Timezone: " + String(timezoneOffset));
+  Serial.println("Email: " + emailAlarm);
+}
 
 // Function to replace the placeholders
 String processor(const String& var){
@@ -189,6 +250,27 @@ String processor(const String& var){
   if(var == "LAST_ALARM_TIME"){
     return lastAlarmTime;
   }
+  if (var == "ESP_IP") {
+    return Local_Server_IP;
+  }
+  if (var == "ESP_MAC") {
+    return WiFi.macAddress();
+  }
+  if (var == "WIFI_SSID") {
+    return wifiSsid;
+  }
+  if (var == "WIFI_PASSWORD") {
+    return wifiPassword;
+  }
+  if (var == "NTP_SERVER") {
+    return ntpServer;
+  }
+  if (var == "TIMEZONE") {
+    return String(timezoneOffset) + " h";
+  }
+  if (var == "ALARM_EMAIL") {
+    return emailAlarm;
+  }
 
   return String();
 }
@@ -239,6 +321,12 @@ void setup() {
   Serial.begin(115200);
   delay(5000);
 
+  if (!LittleFS.begin()) {
+    Serial.println("Erro ao montar LittleFS");
+    return;
+  }
+  loadConfig();
+
   lcd.init();
   lcd.backlight();
 
@@ -272,18 +360,19 @@ void setup() {
   ledcAttachChannel(Servo, Servofreq, ServoResolution, ServoChannel); // Servomotor
 
   // Connect to Wi-Fi
-  WiFi.begin(ssid, password);
+  WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+  
   int ic=0; String str_blank="";
   while (WiFi.status() != WL_CONNECTED) {
     if (ic==0) {str_blank=""; ic=1;} else {str_blank=" "; ic=0;}
-    Serial.println(str_blank + "Trying to connect to Wi-Fi network \"" + String(ssid) + "\"");
+    Serial.println(str_blank + "Trying to connect to Wi-Fi network \"" + wifiSsid + "\"");
     lcd.clear(); lcd.setCursor(0,0); lcd.print(str_blank + "Trying Wi-Fi:");
-    lcd.setCursor(0,1); lcd.print(ssid);
+    lcd.setCursor(0,1); lcd.print(wifiSsid);
     delay(1000);
   }
-  Serial.println("Connected to Wi-Fi network \"" + String(ssid) + "\"");
+  Serial.println("Connected to Wi-Fi network \"" + wifiSsid + "\"");
   lcd.clear(); lcd.setCursor(0,0); lcd.print("Connected Wi-Fi:");
-  lcd.setCursor(0,1); lcd.print(ssid);
+  lcd.setCursor(0,1); lcd.print(wifiSsid);
   // Print the ESP32's IP address
   Local_Server_IP = WiFi.localIP().toString();
   Serial.println("ESP32's IP address: " + Local_Server_IP);
@@ -298,8 +387,8 @@ void setup() {
   Serial.println("Date & time now: " + String(Local_Date_Time));
   Serial.println("Trying to update date & time...");
   while (!getLocalTime(&timeinfo)){
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    delay(1000);
+    long gmtOffset_sec = timezoneOffset * 3600;
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer.c_str());
     Serial.print("x");
   }
   strftime(Local_Date_Time, sizeof(Local_Date_Time), "%d/%m/%Y, %H:%M:%S", &timeinfo);
@@ -346,12 +435,11 @@ void setup() {
   });
    server.on("/history.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();
-    request->send(LittleFS, "/history.html", "text/html");
     request->send(LittleFS, "/history.html", String(), false, processor);
   });
   server.on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();
-    request->send(LittleFS, "/settings.html", "text/html");
+    request->send(LittleFS, "/settings.html", String(), false, processor);
   });
 
   //pot
