@@ -33,11 +33,15 @@ LiquidCrystal_I2C lcd(0x27, Ncols, Nrows); // I2C address: 0x27; Display size: 1
 // Potentiometer adjusted Led:
 #define POT_PIN 34
 #define LED_3_PIN 27
-// PWM
+//led PWM
 const int pwmFreq = 5000;
 const int pwmChannel = 0;
 const int pwmResolution = 8;
 int pwmDutyCycle = 0;
+
+//flag estado
+String flagestado = "init";
+
 
 String wifiSsid = "defaultSSID";
 String wifiPassword = "defaultPassword";
@@ -49,7 +53,7 @@ String emailAlarm = "default@exemplo.com";
 #define LED_4_PIN 14
 // PWM
 const int pwmled4Freq = 5000;
-const int pwmled4Channel = 1;
+const int pwmled4Channel = 2;
 const int pwmled4Resolution = 8;
 int pwmled4DutyCycle = 0;
 
@@ -107,6 +111,23 @@ const unsigned long debounceDelay = 200; // 200ms debounce
 const unsigned long alarmDuration = 2000; // 2 seconds alarm duration
 int alarmCount = 0;
 String lastAlarmTime = "Nenhum alarme";
+
+void actionComunication(const String& line1, const String& line2 = "") {
+  Serial.println(line1);
+  if (line2.length() > 0) {
+    Serial.println(line2);
+  }
+
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(line1);
+
+  if (line2.length() > 0) {
+    lcd.setCursor(0,1);
+    lcd.print(line2);
+  }
+}
+
 
 void loadConfig() {
   if (!LittleFS.exists("/config.json")) {
@@ -204,8 +225,6 @@ String processor(const String& var){
   }
   if (var == "PWM_DUTY_CYCLE") {
     int percent = map(pwmDutyCycle, 0, 255, 0, 100);
-    Serial.print("DEBUG PWM: ");
-    Serial.println(percent);
     return String(percent);
   }
   if (var == "PWM_DUTY_STARS") {
@@ -421,25 +440,37 @@ void setup() {
   // Generate an output for each possible file request or command sent to the web server
   // home page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    Remote_Client_IP = request->client()->remoteIP().toString();
-    Serial.println("GET /home.html");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("/home.html");
+    Remote_Client_IP = request->client()->remoteIP().toString();  
+    if(flagestado != "home"){
+      actionComunication("/home.html");
+      flagestado = "home";
+    }
     request->send(LittleFS, "/home.html", String(), false, processor);
   });
 
   server.on("/home.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP=request->client()->remoteIP().toString();
-    Serial.println("GET /home.html");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("/home.html");
+    if(flagestado != "home"){
+      actionComunication("/home.html");
+      flagestado = "home";
+    }
     request->send(LittleFS, "/home.html", String(), false, processor);
   });
    server.on("/history.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();
     request->send(LittleFS, "/history.html", String(), false, processor);
+    if(flagestado != "history"){
+      actionComunication("/history.html");
+      flagestado = "history";
+    }
   });
   server.on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();
     request->send(LittleFS, "/settings.html", String(), false, processor);
+    if(flagestado != "settings"){
+      actionComunication("/settings.html");
+      flagestado = "settings";
+    }
   });
 
   //pot
@@ -466,38 +497,45 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
   // Route to control LED 1
   server.on("/led1/on", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_1_State = HIGH; digitalWrite(LED_1_PIN, Led_1_State);
-    Serial.println("GET /led1/on");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("/led1/on");
     request->send(LittleFS, "/home.html", String(), false, processor);
+    if(flagestado != "led1/on"){
+      actionComunication("led1 on");
+      flagestado = "led1/on";
+    }
   });
   server.on("/led1/off", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_1_State = LOW; digitalWrite(LED_1_PIN, Led_1_State);
-    Serial.println("GET /led1/off");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("/led1/off");
     request->send(LittleFS, "/home.html", String(), false, processor);
+    if(flagestado != "led1/off"){
+      actionComunication("led1 off");
+      flagestado = "led1/off";
+    }
   });
   // Route to control LED 2
   server.on("/led2/on", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_2_State = HIGH; digitalWrite(LED_2_PIN, Led_2_State);
-    Serial.println("GET /led2/on");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("/led2/on");
     request->send(LittleFS, "/home.html", String(), false, processor);
+    if(flagestado != "led2/on"){
+      actionComunication("led2 on");
+      flagestado = "led2/on";
+    }
   });
   server.on("/led2/off", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_2_State = LOW; digitalWrite(LED_2_PIN, Led_2_State);
-    Serial.println("GET /led2/off");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("/led2/off");
     request->send(LittleFS, "/home.html", String(), false, processor);
+    if(flagestado != "led2/off"){
+      actionComunication("led2 off");
+      flagestado = "led2/off";
+    }
   });
-  
 
   // Serving image files
   server.on("/led_on.gif", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("GET /led_on.gif");
+    //Serial.println("GET /led_on.gif");
     request->send(LittleFS, "/led_on.gif", "image/gif");
   });
   server.on("/led_off.gif", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("GET /led_off.gif");
+    //Serial.println("GET /led_off.gif");
     request->send(LittleFS, "/led_off.gif", "image/gif");
   });
 
@@ -616,17 +654,15 @@ void notFound(AsyncWebServerRequest *request) {
 }
 
 void loop() {
-  // Your code 
-  digitalWrite(LED_ON_BOARD,HIGH);
-  delay(500);
-  digitalWrite(LED_ON_BOARD,LOW);
-  delay(500);
-
-  // Update PWM brightness
-  int potValue = analogRead(POT_PIN);
-  pwmDutyCycle = map(potValue, 0, 4095, 0, 255);
-  ledcWriteChannel(pwmChannel, pwmDutyCycle);
-  Serial.println(analogRead(POT_PIN));
+  
+  // Piscar LED onboard com millis()
+  static unsigned long lastBlink = 0;
+  static bool ledState = false;
+  if (millis() - lastBlink >= 500) {
+    lastBlink = millis();
+    ledState = !ledState;
+    digitalWrite(LED_ON_BOARD, ledState ? HIGH : LOW);
+  }
   
   // Check if alarm was triggered by interrupt
   if (alarmTriggered) {
@@ -641,44 +677,19 @@ void loop() {
     Serial.println(Slide_Switch_State == LOW ? "ON" : "OFF");
   }
 
-  // Exibir no Serial
-  //Serial.print("PWM Duty Cycle: ");
-  //Serial.print(percent);
-  //Serial.println("%");
+  // Update PWM brightness
+  int potValue = analogRead(POT_PIN);
+  pwmDutyCycle = map(potValue, 0, 4095, 0, 255);
+  ledcWriteChannel(pwmChannel, pwmDutyCycle);
+  static int lastPercent = pwmDutyCycle;
 
-  // Exibir no LCD
-  //lcd.clear();
-  //lcd.setCursor(0,0);
-  //lcd.print("PWM Duty Cycle:");
-  //lcd.setCursor(0,1);
-  //lcd.print(String(percent) + "%");
+  if (abs(lastPercent - pwmDutyCycle) >= 100){
+    
+    lastPercent = pwmDutyCycle;
+    int percent = map(pwmDutyCycle, 0, 255, 0, 100);
+    actionComunication("LED 4 Duty Cycle:", String(percent) + "%");
 
-  // Calcular percentual (0-100%)
-  int percent = map(pwmDutyCycle, 0, 255, 0, 100);
-
-  // Variável estática para armazenar último valor
-  static int lastPercent = -1;
-
-  // Atualizar apenas se diferença >= 3
-  if (abs(percent - lastPercent) >= 3) {
-    lastPercent = percent;
-
-    // Serial
-    Serial.print("PWM Duty Cycle: ");
-    Serial.print(percent);
-    Serial.println("%");
-
-    // LCD
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("PWM Duty Cycle:");
-    lcd.setCursor(0,1);
-    lcd.print(String(percent) + "%");
   }
-
-  
-
-
 
 
 }
