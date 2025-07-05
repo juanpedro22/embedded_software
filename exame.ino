@@ -38,6 +38,7 @@ const int pwmFreq = 5000;
 const int pwmChannel = 0;
 const int pwmResolution = 8;
 int pwmDutyCycle = 0;
+float potVoltage = 0.0;
 
 //flag estado
 String flagestado = "init";
@@ -81,6 +82,11 @@ String Text_Box_2_Message = "TB2 message not defined";
 const char* PARAM_INPUT = "input";
 String ledstate, ledstate_inverse;
 
+//for lcd print
+String lcdCurrentLine1 = "";
+String lcdCurrentLine2 = "";
+unsigned long lcdMessageExpiry = 0;
+
 // For PWM info display
 String pwmDutyCycleStr;
 String pwmFrequencyStr;
@@ -112,20 +118,22 @@ const unsigned long alarmDuration = 2000; // 2 seconds alarm duration
 int alarmCount = 0;
 String lastAlarmTime = "Nenhum alarme";
 
-void actionComunication(const String& line1, const String& line2 = "") {
+
+void actionComunication(const String& line1, const String& line2 = "", unsigned long durationMs = 8000) {
   Serial.println(line1);
   if (line2.length() > 0) {
     Serial.println(line2);
   }
-
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(line1);
-
   if (line2.length() > 0) {
     lcd.setCursor(0,1);
     lcd.print(line2);
   }
+  lcdCurrentLine1 = line1;
+  lcdCurrentLine2 = line2;
+  lcdMessageExpiry = millis() + durationMs;
 }
 
 
@@ -289,6 +297,9 @@ String processor(const String& var){
   }
   if (var == "ALARM_EMAIL") {
     return emailAlarm;
+  }
+  if (var == "POT_VOLTAGE") {
+    return String(potVoltage, 2) + " V";
   }
 
   return String();
@@ -596,17 +607,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
   
       ledcWriteChannel(pwmled4Channel, pwmled4DutyCycle);
 
-      // Mensagem serial
-      Serial.print("LED4 Duty set to: ");
-      Serial.print(duty);
-      Serial.println("%");
-
-      // Atualiza LCD
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("LED4 Duty Cycle:");
-      lcd.setCursor(0,1);
-      lcd.print(String(duty) + "%");
+      actionComunication("LED4 Duty Cycle:", String(duty) + "%");
 
       request->send(LittleFS, "/home.html", String(), false, processor);
     } else {
@@ -691,7 +692,13 @@ void notFound(AsyncWebServerRequest *request) {
 }
 
 void loop() {
-  
+  if (lcdMessageExpiry > 0 && millis() > lcdMessageExpiry) {
+    // Mensagem expirou, mostra status default
+    lcdMessageExpiry = 0;
+    lcd.clear();
+    lcd.setCursor(0,0);
+    //lcd.print("WElCOME");
+  }
   // Piscar LED onboard com millis()
   static unsigned long lastBlink = 0;
   static bool ledState = false;
@@ -718,8 +725,9 @@ void loop() {
   int potValue = analogRead(POT_PIN);
   pwmDutyCycle = map(potValue, 0, 4095, 0, 255);
   ledcWriteChannel(pwmChannel, pwmDutyCycle);
+  potVoltage = (potValue / 4095.0) * 3.3;
   static int lastPercent = pwmDutyCycle;
-
+  
   if (abs(lastPercent - pwmDutyCycle) >= 100){
     
     lastPercent = pwmDutyCycle;
