@@ -23,7 +23,7 @@ LiquidCrystal_I2C lcd(0x27, Ncols, Nrows); // I2C address: 0x27; Display size: 1
 // Variável global (adicione fora das funções, no topo do código)
 int lastLed4Duty = -1;
 // Slide Switch configuration:
-#define SLIDE_SWITCH_PIN 32   // ESP32 pin IO32 connected to slide switch
+#define SLIDE_SWITCH_PIN 17   // ESP32 pin IO32 connected to slide switch
 
 // Pushbutton configuration:
 #define PUSHBUTTON_PIN 18     // ESP32 pin IO33 connected to pushbutton
@@ -303,6 +303,19 @@ String processor(const String& var){
   if (var == "POT_VOLTAGE") {
     return String(potVoltage, 2) + " V";
   }
+  if(var == "SLIDE_SWITCH_ALERT_CLASS"){
+    if(Slide_Switch_State == LOW)
+      return "success";
+    else
+      return "secondary";
+  }
+
+  if(var == "SLIDE_SWITCH_ICON"){
+    if(Slide_Switch_State == LOW)
+      return "check-circle";
+    else
+      return "dash-circle";
+  }
 
   return String();
 }
@@ -372,6 +385,7 @@ void setup() {
   //LED3 and PWM pot
   pinMode(LED_3_PIN, OUTPUT);
   pinMode(POT_PIN, INPUT);
+  pinMode(SLIDE_SWITCH_PIN, INPUT_PULLUP);
   // PWM setup
   ledcAttachChannel(LED_3_PIN, pwmFreq, pwmResolution, pwmChannel);
   //led
