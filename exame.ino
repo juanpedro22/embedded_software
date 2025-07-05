@@ -547,6 +547,43 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
     lcd.setCursor(0,1); lcd.print(Remote_Client_IP);
     request->send(200, "text/plain", "Received request from client with IP: " + Remote_Client_IP);
   });
+
+  server.on("/log_last10", HTTP_GET, [](AsyncWebServerRequest *request) {
+    File file = LittleFS.open(Filename, "r");
+    if (!file) {
+      request->send(500, "text/plain", "Erro ao abrir o arquivo de log.");
+      return;
+    }
+
+    // Lê todo o conteúdo
+    String content = file.readString();
+    file.close();
+
+    // Divide em linhas
+    std::vector<String> lines;
+    int start = 0;
+    int idx = content.indexOf('\n');
+    while (idx >= 0) {
+      lines.push_back(content.substring(start, idx));
+      start = idx + 1;
+      idx = content.indexOf('\n', start);
+    }
+    // Pode ter linha final sem \n
+    if (start < content.length()) {
+      lines.push_back(content.substring(start));
+    }
+
+    // Pega últimas 10 linhas
+    String output;
+    int total = lines.size();
+    int from = total > 10 ? total - 10 : 0;
+    for (int i = from; i < total; i++) {
+      output += lines[i] + "\n";
+    }
+
+    request->send(200, "text/plain", output);
+  });
+
   server.on("/set_led4", HTTP_GET, [](AsyncWebServerRequest *request) {
     if (request->hasParam("duty")) {
       String dutyStr = request->getParam("duty")->value();
