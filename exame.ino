@@ -20,7 +20,8 @@ LiquidCrystal_I2C lcd(0x27, Ncols, Nrows); // I2C address: 0x27; Display size: 1
 #define LED_1_PIN 25   // ESP32 pin IO25 connected to LED 1
 #define LED_2_PIN 26   // ESP32 pin IO26 connected to LED 2
 #define LED_ON_BOARD  2
-
+// Variável global (adicione fora das funções, no topo do código)
+int lastLed4Duty = -1;
 // Slide Switch configuration:
 #define SLIDE_SWITCH_PIN 32   // ESP32 pin IO32 connected to slide switch
 
@@ -41,7 +42,8 @@ int pwmDutyCycle = 0;
 float potVoltage = 0.0;
 
 //flag estado
-String flagestado = "init";
+String flagcurrentpage = "";
+String flaglastaction = "";
 
 
 String wifiSsid = "defaultSSID";
@@ -452,35 +454,35 @@ void setup() {
   // home page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();  
-    if(flagestado != "home"){
+    if(flagcurrentpage != "/home.html"){
       actionComunication("/home.html");
-      flagestado = "home";
+      flagcurrentpage = "/home.html";
     }
     request->send(LittleFS, "/home.html", String(), false, processor);
   });
 
   server.on("/home.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP=request->client()->remoteIP().toString();
-    if(flagestado != "home"){
+    if(flagcurrentpage != "/home.html"){
       actionComunication("/home.html");
-      flagestado = "home";
+      flagcurrentpage = "/home.html";
     }
     request->send(LittleFS, "/home.html", String(), false, processor);
   });
    server.on("/history.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();
     request->send(LittleFS, "/history.html", String(), false, processor);
-    if(flagestado != "history"){
+    if(flagcurrentpage != "/history.html"){
       actionComunication("/history.html");
-      flagestado = "history";
+      flagcurrentpage = "/history.html";
     }
   });
   server.on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();
     request->send(LittleFS, "/settings.html", String(), false, processor);
-    if(flagestado != "settings"){
+    if(flagcurrentpage != "/settings.html"){
       actionComunication("/settings.html");
-      flagestado = "settings";
+      flagcurrentpage = "/settings.html";
     }
   });
 
@@ -509,34 +511,34 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
   server.on("/led1/on", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_1_State = HIGH; digitalWrite(LED_1_PIN, Led_1_State);
     request->send(LittleFS, "/home.html", String(), false, processor);
-    if(flagestado != "led1/on"){
+    if(flaglastaction != "led1/on"){
       actionComunication("led1 on");
-      flagestado = "led1/on";
+      flaglastaction = "led1/on";
     }
   });
   server.on("/led1/off", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_1_State = LOW; digitalWrite(LED_1_PIN, Led_1_State);
     request->send(LittleFS, "/home.html", String(), false, processor);
-    if(flagestado != "led1/off"){
+    if(flaglastaction != "led1/off"){
       actionComunication("led1 off");
-      flagestado = "led1/off";
+      flaglastaction = "led1/off";
     }
   });
   // Route to control LED 2
   server.on("/led2/on", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_2_State = HIGH; digitalWrite(LED_2_PIN, Led_2_State);
     request->send(LittleFS, "/home.html", String(), false, processor);
-    if(flagestado != "led2/on"){
+    if(flaglastaction != "led2/on"){
       actionComunication("led2 on");
-      flagestado = "led2/on";
+      flaglastaction = "led2/on";
     }
   });
   server.on("/led2/off", HTTP_GET, [](AsyncWebServerRequest *request) {
     Led_2_State = LOW; digitalWrite(LED_2_PIN, Led_2_State);
     request->send(LittleFS, "/home.html", String(), false, processor);
-    if(flagestado != "led2/off"){
+    if(flaglastaction != "led2/off"){
       actionComunication("led2 off");
-      flagestado = "led2/off";
+      flaglastaction = "led2/off";
     }
   });
 
@@ -595,19 +597,29 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", output);
   });
 
-  server.on("/set_led4", HTTP_GET, [](AsyncWebServerRequest *request) {
+  server.on("/set_led4", [](AsyncWebServerRequest *request) {
     if (request->hasParam("duty")) {
       String dutyStr = request->getParam("duty")->value();
       int duty = dutyStr.toInt();
       if (duty < 0) duty = 0;
       if (duty > 100) duty = 100;
-      pwmled4DutyCycle = map(duty, 0, 100, 0, 255);
 
       // Atualiza PWM
-  
+      pwmled4DutyCycle = map(duty, 0, 100, 0, 255);
       ledcWriteChannel(pwmled4Channel, pwmled4DutyCycle);
 
-      actionComunication("LED4 Duty Cycle:", String(duty) + "%");
+      // Verifica diferença para decidir imprimir
+      if (lastLed4Duty == -1 || abs(duty - lastLed4Duty) >= 10) {
+        // Se primeira vez ou diferença ≥10%, imprime no LCD
+        actionComunication("LED4 Duty Cycle:", String(duty) + "%");
+        lastLed4Duty = duty;
+      } else {
+        // Não imprime, só atualiza variável
+        lastLed4Duty = duty;
+      }
+
+      // Atualiza flag da página
+      flagcurrentpage = "/home.html";
 
       request->send(LittleFS, "/home.html", String(), false, processor);
     } else {
@@ -695,9 +707,7 @@ void loop() {
   if (lcdMessageExpiry > 0 && millis() > lcdMessageExpiry) {
     // Mensagem expirou, mostra status default
     lcdMessageExpiry = 0;
-    lcd.clear();
-    lcd.setCursor(0,0);
-    //lcd.print("WElCOME");
+    actionComunication(flagcurrentpage);
   }
   // Piscar LED onboard com millis()
   static unsigned long lastBlink = 0;
