@@ -342,11 +342,7 @@ void activateAlarm() {
 
   // 1. First: Display on LCD
   Serial.printf("ALARM #%d TRIGGERED! Time: %s\n", alarmCount, lastAlarmTime.c_str());
-  lcd.clear(); 
-  lcd.setCursor(0,0); 
-  lcd.print("ALARME #" + String(alarmCount));
-  lcd.setCursor(0,1); 
-  lcd.print(lastAlarmTime.substring(0, 16)); // Display date/time (truncated to fit)
+  actionComunication("ALARME #" + String(alarmCount), lastAlarmTime.substring(0,16));
 
   // 2. Second: Log to file
   String logEntry = String(Local_Date_Time) + ", Alarme #" + String(alarmCount) + " - Botao pressionado\r\n";
@@ -411,14 +407,11 @@ void setup() {
   int ic=0; String str_blank="";
   while (WiFi.status() != WL_CONNECTED) {
     if (ic==0) {str_blank=""; ic=1;} else {str_blank=" "; ic=0;}
-    Serial.println(str_blank + "Trying to connect to Wi-Fi network \"" + wifiSsid + "\"");
-    lcd.clear(); lcd.setCursor(0,0); lcd.print(str_blank + "Trying Wi-Fi:");
-    lcd.setCursor(0,1); lcd.print(wifiSsid);
+    actionComunication(str_blank + "Trying Wi-Fi:", wifiSsid);
     delay(1000);
   }
-  Serial.println("Connected to Wi-Fi network \"" + wifiSsid + "\"");
-  lcd.clear(); lcd.setCursor(0,0); lcd.print("Connected Wi-Fi:");
-  lcd.setCursor(0,1); lcd.print(wifiSsid);
+  
+  actionComunication("Connected Wi-Fi:", wifiSsid);
   // Print the ESP32's IP address
   Local_Server_IP = WiFi.localIP().toString();
   Serial.println("ESP32's IP address: " + Local_Server_IP);
@@ -517,7 +510,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
   //server.on("/teste.txt", HTTP_GET, [](AsyncWebServerRequest *request) {
   server.on(Filename, HTTP_GET, [](AsyncWebServerRequest *request) {
     Serial.println("GET " + String(Filename));
-    lcd.clear(); lcd.setCursor(0,0); lcd.print(Filename);
+    actionComunication(Filename);
     request->send(LittleFS, Filename, String(), false, processor);
   });
 
@@ -570,7 +563,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
   server.on("/printRemoteIP", HTTP_GET, [](AsyncWebServerRequest *request){
     Remote_Client_IP=request->client()->remoteIP().toString();
     Serial.println("Received request from client with IP: " + Remote_Client_IP);
-    lcd.clear(); lcd.setCursor(0,0); lcd.print("Remote Client IP:");
+    actionComunication("Remote Client IP:", Remote_Client_IP);
     lcd.setCursor(0,1); lcd.print(Remote_Client_IP);
     request->send(200, "text/plain", "Received request from client with IP: " + Remote_Client_IP);
   });
@@ -650,10 +643,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
 
       // Validation: check if input is empty
       if (inputMessage.length() == 0) {
-        Serial.println("Servo: Empty input");
-        lcd.clear(); 
-        lcd.setCursor(0,0); 
-        lcd.print("Servo: Campo vazio");
+        actionComunication("Servo: Campo vazio");
       }
       // Validation: check if input contains only digits
       else {
@@ -667,11 +657,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
 
         if (!isValidNumber) {
           Serial.println("Servo: Invalid characters in input: " + inputMessage);
-          lcd.clear(); 
-          lcd.setCursor(0,0); 
-          lcd.print("Servo: Erro");
-          lcd.setCursor(0,1); 
-          lcd.print("Apenas numeros");
+          actionComunication("Servo: Erro", "Apenas numeros");
         }
         else {
           int angle = inputMessage.toInt();
@@ -682,28 +668,15 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
             int dutyCycle = map(angle, 0, 180, servoDutyCycleMin, servoDutyCycleMax);
             ledcWriteChannel(ServoChannel, dutyCycle);
 
-            Serial.println("Servo angle set to: " + String(angle) + "°");
-            lcd.clear(); 
-            lcd.setCursor(0,0); 
-            lcd.print("Servo: " + String(angle) + " graus");
+            actionComunication("Servo:", String(angle) + " graus");
           } else {
-            Serial.println("Servo: Angle out of range: " + String(angle));
-            lcd.clear(); 
-            lcd.setCursor(0,0); 
-            lcd.print("Servo: Erro");
-            lcd.setCursor(0,1); 
-            lcd.print("Range: 0-180");
+            actionComunication("Servo: Erro", "Range: 0-180");
           }
         }
       }
     }
     else {
-      Serial.println("Servo: Missing parameter");
-      lcd.clear(); 
-      lcd.setCursor(0,0); 
-      lcd.print("Servo: Erro");
-      lcd.setCursor(0,1); 
-      lcd.print("Param ausente");
+      actionComunication("Servo: Erro", "Param ausente");
     }
 
     request->send(LittleFS, "/home.html", String(), false, processor);
