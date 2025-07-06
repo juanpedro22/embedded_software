@@ -424,7 +424,7 @@ void setup() {
   actionComunication("Connected Wi-Fi:", wifiSsid);
   // Print the ESP32's IP address
   Local_Server_IP = WiFi.localIP().toString();
-  Serial.println("ESP32's IP address: " + Local_Server_IP);
+  actionComunication("IP Servidor:", Local_Server_IP);
   Serial.println("ESP32's MAC address: " + String(WiFi.macAddress()));
   // IPAddress primaryDNS(192, 168, 0, 1);
   IPAddress primaryDNS(8, 8, 8, 8);   //optional
@@ -472,7 +472,7 @@ void setup() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();  
     if(flagcurrentpage != "/home.html"){
-      actionComunication("/home.html");
+      actionComunication(Remote_Client_IP, "/home.html");
       flagcurrentpage = "/home.html";
     }
     request->send(LittleFS, "/home.html", String(), false, processor);
@@ -481,7 +481,7 @@ void setup() {
   server.on("/home.html", HTTP_GET, [](AsyncWebServerRequest *request) {
     Remote_Client_IP=request->client()->remoteIP().toString();
     if(flagcurrentpage != "/home.html"){
-      actionComunication("/home.html");
+      actionComunication(Remote_Client_IP,"/home.html");
       flagcurrentpage = "/home.html";
     }
     request->send(LittleFS, "/home.html", String(), false, processor);
@@ -490,7 +490,7 @@ void setup() {
     Remote_Client_IP = request->client()->remoteIP().toString();
     request->send(LittleFS, "/history.html", String(), false, processor);
     if(flagcurrentpage != "/history.html"){
-      actionComunication("/history.html");
+      actionComunication(Remote_Client_IP, "/history.html");
       flagcurrentpage = "/history.html";
     }
   });
@@ -498,7 +498,7 @@ void setup() {
     Remote_Client_IP = request->client()->remoteIP().toString();
     request->send(LittleFS, "/settings.html", String(), false, processor);
     if(flagcurrentpage != "/settings.html"){
-      actionComunication("/settings.html");
+      actionComunication(Remote_Client_IP, "/settings.html");
       flagcurrentpage = "/settings.html";
     }
   });
@@ -526,35 +526,39 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
 
   // Route to control LED 1
   server.on("/led1/on", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Remote_Client_IP = request->client()->remoteIP().toString();
     Led_1_State = HIGH; digitalWrite(LED_1_PIN, Led_1_State);
     request->send(LittleFS, "/home.html", String(), false, processor);
     if(flaglastaction != "led1/on"){
-      actionComunication("led1 on");
+      actionComunication(Remote_Client_IP, "led1 on");
       flaglastaction = "led1/on";
     }
   });
   server.on("/led1/off", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Remote_Client_IP = request->client()->remoteIP().toString();
     Led_1_State = LOW; digitalWrite(LED_1_PIN, Led_1_State);
     request->send(LittleFS, "/home.html", String(), false, processor);
     if(flaglastaction != "led1/off"){
-      actionComunication("led1 off");
+      actionComunication(Remote_Client_IP, "led1 off");
       flaglastaction = "led1/off";
     }
   });
   // Route to control LED 2
   server.on("/led2/on", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Remote_Client_IP = request->client()->remoteIP().toString();
     Led_2_State = HIGH; digitalWrite(LED_2_PIN, Led_2_State);
     request->send(LittleFS, "/home.html", String(), false, processor);
     if(flaglastaction != "led2/on"){
-      actionComunication("led2 on");
+      actionComunication(Remote_Client_IP, "led2 on");
       flaglastaction = "led2/on";
     }
   });
   server.on("/led2/off", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Remote_Client_IP = request->client()->remoteIP().toString();
     Led_2_State = LOW; digitalWrite(LED_2_PIN, Led_2_State);
     request->send(LittleFS, "/home.html", String(), false, processor);
     if(flaglastaction != "led2/off"){
-      actionComunication("led2 off");
+      actionComunication(Remote_Client_IP, "led2 off");
       flaglastaction = "led2/off";
     }
   });
@@ -615,13 +619,14 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
   });
 
   server.on("/buzzer/on", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Remote_Client_IP = request->client()->remoteIP().toString();
     Buzzer_State = HIGH;
     digitalWrite(BUZZER_PIN, Buzzer_State);
 
     buzzerActive = true;
     buzzerOffTime = millis() + 5000;
 
-    actionComunication("Buzzer acionado", "Desliga em 5 seg");
+    actionComunication(Remote_Client_IP, "Buzzer acionado");
 
     request->send(LittleFS, "/home.html", String(), false, processor);
       // Redireciona imediatamente para /home.html
@@ -669,6 +674,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
   });
 
   server.on("/set_led4", [](AsyncWebServerRequest *request) {
+    Remote_Client_IP = request->client()->remoteIP().toString();
     if (request->hasParam("duty")) {
       String dutyStr = request->getParam("duty")->value();
       int duty = dutyStr.toInt();
@@ -682,7 +688,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
       // Verifica diferença para decidir imprimir
       if (lastLed4Duty == -1 || abs(duty - lastLed4Duty) >= 10) {
         // Se primeira vez ou diferença ≥10%, imprime no LCD
-        actionComunication("LED4 Duty Cycle:", String(duty) + "%");
+        actionComunication(Remote_Client_IP, "LED4 DC: " + String(duty) + "%");
         lastLed4Duty = duty;
       } else {
         // Não imprime, só atualiza variável
@@ -699,6 +705,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
   });
   // Route to control ServoMotor angle
   server.on("/servo", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    Remote_Client_IP = request->client()->remoteIP().toString();
     String inputMessage, inputParam;
     // GET input value on <ESP_IP>/servo?input=<angle>
     if (request->hasParam(PARAM_INPUT)) {
@@ -732,7 +739,7 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
             int dutyCycle = map(angle, 0, 180, servoDutyCycleMin, servoDutyCycleMax);
             ledcWriteChannel(ServoChannel, dutyCycle);
 
-            actionComunication("Servo:", String(angle) + " graus");
+            actionComunication(Remote_Client_IP, "Servo: " + String(angle) + " graus");
           } else {
             actionComunication("Servo: Erro", "Range: 0-180");
           }
@@ -758,7 +765,7 @@ void loop() {
   if (lcdMessageExpiry > 0 && millis() > lcdMessageExpiry) {
     // Mensagem expirou, mostra status default
     lcdMessageExpiry = 0;
-    actionComunication(flagcurrentpage);
+    actionComunication("ESP32 Control");
   }
   // Piscar LED onboard com millis()
   static unsigned long lastBlink = 0;
