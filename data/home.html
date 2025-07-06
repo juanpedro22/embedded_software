@@ -204,19 +204,61 @@ body {
       </div>
     </div>
 
+    <!-- buzzer -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title">buzzer</h5>
+            <i class="bi bi-exclamation-triangle card-icon"></i>
+          </div>
+          <p>Total de Alarmes: <strong>%ALARM_COUNT%</strong></p>
+          <p class="mb-0">Último Alarme:</p>
+          <small class="text-white">%LAST_ALARM_TIME%</small>
+        </div>
+      </div>
+    </div>
+
+        <!-- Motor -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body text-center">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title">motor</h5>
+            <i class="bi bi-exclamation-triangle card-icon"></i>
+          </div>
+          <p>Total de Alarmes: <strong>%ALARM_COUNT%</strong></p>
+          <p class="mb-0">Último Alarme:</p>
+          <small class="text-white">%LAST_ALARM_TIME%</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Card -->
+   
     <!-- Info Card -->
     <div class="col-12 col-lg-8">
       <div class="card h-100 shadow-sm">
         <div class="card-body">
           <h5 class="card-title">Informações do Sistema</h5>
-          <p>
-            Data/Hora: %LOCAL_DATE_TIME%<br>
-            IP Servidor: %LOCAL_SERVER_IP%<br>
-            IP Cliente: %REMOTE_CLIENT_IP%
-          </p>
+          <div class="d-flex flex-wrap justify-content-between align-items-center">
+            <div class="d-flex align-items-center me-3 mb-2">
+              <i class="bi bi-calendar3 me-2 text-info"></i>
+              <small>%LOCAL_DATE_TIME%</small>
+            </div>
+            <div class="d-flex align-items-center me-3 mb-2">
+              <i class="bi bi-hdd-network me-2 text-success"></i>
+              <small>Servidor: %LOCAL_SERVER_IP%</small>
+            </div>
+            <div class="d-flex align-items-center mb-2">
+              <i class="bi bi-laptop me-2 text-warning"></i>
+              <small>Cliente: %REMOTE_CLIENT_IP%</small>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+
   </div>
 </div>
 <footer class="mt-5 py-3 text-center" style="background-color:#1f1f1f; color:#aaa;">
