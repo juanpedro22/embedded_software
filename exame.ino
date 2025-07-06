@@ -464,11 +464,14 @@ void setup() {
   Serial.println("Date&time update" + String(Local_Date_Time));
   char Short_Date_Time[30];
   strftime(Short_Date_Time, sizeof(Short_Date_Time), "%d/%m/%Y,%H:%M", &timeinfo);
-  actionComunication("NTP atualizado:", String(Short_Date_Time));
-
+  actionComunication("NTP atualizado:", String(Short_Date_Time),3000);
+  delay(3000);
+  
   // Mount filesystem LITTLEFS and check if the output file exists (if not, create it as an empty file)
   if(!LittleFS.begin()) {
      Serial.println("An Error has occurred while mounting LittleFS");
+     actionComunication("Error LittleFS");
+     delay(3000);
      return;
     }
    else{
@@ -489,7 +492,7 @@ void setup() {
     // Delete File
     // deleteFile(LittleFS, Filename);
    }
-  
+  actionComunication("web server", "started!", 3000);
   // Generate an output for each possible file request or command sent to the web server
   // home page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
