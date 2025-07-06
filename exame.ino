@@ -120,6 +120,9 @@ const unsigned long alarmDuration = 2000; // 2 seconds alarm duration
 int alarmCount = 0;
 String lastAlarmTime = "Nenhum alarme";
 
+bool buzzerActive = false;
+unsigned long buzzerOffTime = 0;
+
 
 void actionComunication(const String& line1, const String& line2 = "", unsigned long durationMs = 8000) {
   Serial.println(line1);
@@ -310,6 +313,13 @@ String processor(const String& var){
       return "secondary";
   }
 
+  if(var == "BUZZER_ICON"){
+    if(Buzzer_State == HIGH)
+      return "volume-up";
+    else
+      return "volume-mute";
+  }
+
   if(var == "SLIDE_SWITCH_ICON"){
     if(Slide_Switch_State == LOW)
       return "check-circle";
@@ -388,7 +398,7 @@ void setup() {
   pinMode(LED_4_PIN, OUTPUT);
   ledcAttachChannel(LED_4_PIN, pwmled4Freq, pwmled4Resolution, pwmled4Channel);
 
-
+ 
   // Slide switch configuration
   pinMode(SLIDE_SWITCH_PIN, INPUT_PULLUP);
   // Pushbutton configuration
@@ -604,6 +614,60 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", output);
   });
 
+  server.on("/buzzer/on", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Buzzer_State = HIGH;
+    digitalWrite(BUZZER_PIN, Buzzer_State);
+
+    buzzerActive = true;
+    buzzerOffTime = millis() + 5000;
+
+    actionComunication("Buzzer acionado", "Desliga em 5 seg");
+
+    request->send(LittleFS, "/home.html", String(), false, processor);
+      // Redireciona imediatamente para /home.html
+    request->redirect("/home.html");
+
+  });
+
+  server.on("/buzzer_page", HTTP_GET, [](AsyncWebServerRequest *request) {
+    // Liga o buzzer
+    Buzzer_State = HIGH;
+    digitalWrite(BUZZER_PIN, Buzzer_State);
+
+    // Exibe mensagem no LCD
+    actionComunication("Buzzer ON", "Desliga em 5 seg");
+
+    // HTML temporário
+    String html = R"rawliteral(
+      <html>
+        <head>
+          <meta http-equiv="refresh" content="5; URL=/buzzer/off">
+          <title>Buzzer Ativado</title>
+        </head>
+        <body style="text-align:center;font-family:sans-serif;">
+          <h1 style="color:red;">🔊 Buzzer Ativado</h1>
+          <p>O buzzer ficará ligado por 5 segundos.</p>
+        </body>
+      </html>
+    )rawliteral";
+
+    request->send(200, "text/html", html);
+  });
+  
+  server.on("/buzzer/off", HTTP_GET, [](AsyncWebServerRequest *request) {
+    Buzzer_State = LOW;
+    digitalWrite(BUZZER_PIN, Buzzer_State);
+    buzzerActive = false; // Caso use ainda a flag
+
+    Serial.println("Buzzer desligado após 5 segundos.");
+
+    // Opcional: LCD mensagem
+    actionComunication("Buzzer desligado");
+
+    // Redireciona
+    request->redirect("/home.html");
+  });
+
   server.on("/set_led4", [](AsyncWebServerRequest *request) {
     if (request->hasParam("duty")) {
       String dutyStr = request->getParam("duty")->value();
@@ -732,6 +796,12 @@ void loop() {
     actionComunication("LED 4 Duty Cycle:", String(percent) + "%");
 
   }
+  if (buzzerActive && millis() > buzzerOffTime) {
+  Buzzer_State = LOW;
+  digitalWrite(BUZZER_PIN, Buzzer_State);
+  buzzerActive = false;
+  Serial.println("Buzzer desligado após 5 segundos.");
+}
 
 
 }
