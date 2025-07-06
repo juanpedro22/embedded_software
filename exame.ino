@@ -422,6 +422,7 @@ void setup() {
   }
   
   actionComunication("Connected Wi-Fi:", wifiSsid);
+  delay(3000);
   // Print the ESP32's IP address
   Local_Server_IP = WiFi.localIP().toString();
   actionComunication("IP Servidor:", Local_Server_IP);
