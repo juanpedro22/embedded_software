@@ -45,6 +45,8 @@ float potVoltage = 0.0;
 String flagcurrentpage = "";
 String flaglastaction = "";
 
+//lcd mutex
+SemaphoreHandle_t lcdMutex;
 
 String wifiSsid = "defaultSSID";
 String wifiPassword = "defaultPassword";
@@ -119,7 +121,8 @@ const unsigned long debounceDelay = 200; // 200ms debounce
 const unsigned long alarmDuration = 2000; // 2 seconds alarm duration
 int alarmCount = 0;
 String lastAlarmTime = "Nenhum alarme";
-
+// time in lcd 16 max
+String time_for_lcd = "";
 bool buzzerActive = false;
 unsigned long buzzerOffTime = 0;
 
@@ -129,12 +132,21 @@ void actionComunication(const String& line1, const String& line2 = "", unsigned 
   if (line2.length() > 0) {
     Serial.println(line2);
   }
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print(line1);
-  if (line2.length() > 0) {
-    lcd.setCursor(0,1);
-    lcd.print(line2);
+
+  if (xSemaphoreTake(lcdMutex, portMAX_DELAY) == pdTRUE) {
+    // Seu código que acessa o LCD
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print(line1);
+    if (line2.length() > 0) {
+      lcd.setCursor(0,1);
+      lcd.print(line2);
+    }
+    lcdCurrentLine1 = line1;
+    lcdCurrentLine2 = line2;
+    lcdMessageExpiry = millis() + durationMs;
+
+    xSemaphoreGive(lcdMutex);
   }
   lcdCurrentLine1 = line1;
   lcdCurrentLine2 = line2;
@@ -381,6 +393,12 @@ void setup() {
   lcd.init();
   lcd.backlight();
 
+  //semaphore lcd
+  lcdMutex = xSemaphoreCreateMutex();
+  if (lcdMutex == NULL) {
+    Serial.println("Erro ao criar lcdMutex!");
+  }
+
   // Device configuration
   pinMode(LED_1_PIN, OUTPUT);
   digitalWrite(LED_1_PIN, Led_1_State);
@@ -436,13 +454,17 @@ void setup() {
   strftime(Local_Date_Time, sizeof(Local_Date_Time), "%d/%m/%Y, %H:%M:%S", &timeinfo);
   Serial.println("Date & time now: " + String(Local_Date_Time));
   Serial.println("Trying to update date & time...");
+  actionComunication("Trying to update", "date & time...");
   while (!getLocalTime(&timeinfo)){
     long gmtOffset_sec = timezoneOffset * 3600;
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer.c_str());
     Serial.print("x");
   }
   strftime(Local_Date_Time, sizeof(Local_Date_Time), "%d/%m/%Y, %H:%M:%S", &timeinfo);
-  Serial.println(" Date & time update to: " + String(Local_Date_Time));
+  Serial.println("Date&time update" + String(Local_Date_Time));
+  char Short_Date_Time[30];
+  strftime(Short_Date_Time, sizeof(Short_Date_Time), "%d/%m/%Y,%H:%M", &timeinfo);
+  actionComunication("NTP atualizado:", String(Short_Date_Time));
 
   // Mount filesystem LITTLEFS and check if the output file exists (if not, create it as an empty file)
   if(!LittleFS.begin()) {
