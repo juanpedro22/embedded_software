@@ -133,7 +133,7 @@ void setup() {
   Serial.println("MAC: " + WiFi.macAddress());
 
   // Initialize NTP time
-  actionComunication("Sincronizando", "horário NTP...");
+  actionComunication("Sincronizando", "horario NTP...");
   long gmtOffset_sec = timezoneOffset * 3600;
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer.c_str());
   
@@ -228,7 +228,7 @@ void activateAlarm() {
     sendAlarmEmail();
   } else {
     int remaining = 5 - (alarmCount % 5);
-    actionComunication("Faltam " + String(remaining), "para próximo email");
+    actionComunication("Faltam " + String(remaining), "para proximo email");
   }
 }
 
