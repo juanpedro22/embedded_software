@@ -223,14 +223,19 @@ body {
         <!-- Motor -->
     <div class="col-12 col-md-6 col-lg-4">
       <div class="card h-100 shadow-sm">
-        <div class="card-body text-center">
+        <div class="card-body text-center py-2 px-3">
           <div class="d-flex justify-content-between align-items-center">
-            <h5 class="card-title">motor</h5>
-            <i class="bi bi-exclamation-triangle card-icon"></i>
+            <h5 class="card-title">Motor CC</h5>
+            <i class="bi bi-gear-wide-connected card-icon"></i>
           </div>
-          <p>Total de Alarmes: <strong>%ALARM_COUNT%</strong></p>
-          <p class="mb-0">Último Alarme:</p>
-          <small class="text-white">%LAST_ALARM_TIME%</small>
+          <p>Direção: <strong>%MOTOR_DIRECTION%</strong></p>
+          <div class="mb-1">
+            <i class="bi %MOTOR_ICON%" style="font-size:2.5rem;"></i>
+          </div>
+          <div class="d-grid gap-1 mt-2">
+            %MOTOR_BUTTON_1%
+            %MOTOR_BUTTON_2%
+          </div>
         </div>
       </div>
     </div>

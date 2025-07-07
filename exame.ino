@@ -25,6 +25,10 @@ int lastLed4Duty = -1;
 // Slide Switch configuration:
 #define SLIDE_SWITCH_PIN 17   // ESP32 pin IO32 connected to slide switch
 
+// Motor CC configuration:
+#define MOTOR_PIN1 5          // ESP32 pin IO5 connected to motor driver IN1
+#define MOTOR_PIN2 23         // ESP32 pin IO23 connected to motor driver IN2
+
 // Pushbutton configuration:
 #define PUSHBUTTON_PIN 18     // ESP32 pin IO33 connected to pushbutton
 
@@ -113,6 +117,9 @@ int Servo_Angle = 90; // Servo angle state (0-180 degrees)
 int Slide_Switch_State = LOW; // Slide switch state (HIGH/LOW)
 int Pushbutton_State = HIGH; // Pushbutton state (HIGH/LOW) - INPUT_PULLUP inverts logic
 int Buzzer_State = LOW; // Buzzer state (HIGH/LOW)
+
+// Motor CC variables
+String Motor_State = "STOPPED"; // Motor state (STOPPED, CLOCKWISE, COUNTERCLOCKWISE)
 
 // Alarm system variables
 volatile bool alarmTriggered = false;
@@ -338,6 +345,42 @@ String processor(const String& var){
     else
       return "dash-circle";
   }
+   // Motor variables
+  if(var == "MOTOR_STATE"){
+    return Motor_State;
+  }
+  if(var == "MOTOR_DIRECTION"){
+    if(Motor_State == "CLOCKWISE") {
+      return "Horário";
+    } else if(Motor_State == "COUNTERCLOCKWISE") {
+      return "Anti-horário";
+    } else {
+      return "Parado";
+    }
+  }
+  if(var == "MOTOR_BUTTON_1"){
+    if(Motor_State == "STOPPED") {
+      return "<a href=\"/motor/clockwise\" class=\"btn btn-success btn-sm\">Acionar sentido horário</a>";
+    } else {
+      return "<a href=\"/motor/reverse\" class=\"btn btn-warning btn-sm\">Inverter rotação</a>";
+    }
+  }
+  if(var == "MOTOR_BUTTON_2"){
+    if(Motor_State == "STOPPED") {
+      return "<a href=\"/motor/counterclockwise\" class=\"btn btn-primary btn-sm\">Acionar sentido anti-horário</a>";
+    } else {
+      return "<a href=\"/motor/stop\" class=\"btn btn-danger btn-sm\">Parar</a>";
+    }
+  }
+  if(var == "MOTOR_ICON"){
+    if(Motor_State == "CLOCKWISE") {
+      return "bi-arrow-clockwise text-success";
+    } else if(Motor_State == "COUNTERCLOCKWISE") {
+      return "bi-arrow-counterclockwise text-primary";
+    } else {
+      return "bi-dash-circle text-secondary";
+    }
+  }
 
   return String();
 }
@@ -349,6 +392,39 @@ void IRAM_ATTR pushbuttonISR() {
   if (interruptTime - lastInterruptTime > debounceDelay) {
     alarmTriggered = true;
     lastInterruptTime = interruptTime;
+  }
+}
+
+// Motor control functions
+void motorClockwise() {
+  digitalWrite(MOTOR_PIN1, HIGH);
+  digitalWrite(MOTOR_PIN2, LOW);
+  Motor_State = "CLOCKWISE";
+  Serial.println("Motor: Sentido horário");
+  actionComunication("Motor: Horario");
+}
+
+void motorCounterClockwise() {
+  digitalWrite(MOTOR_PIN1, LOW);
+  digitalWrite(MOTOR_PIN2, HIGH);
+  Motor_State = "COUNTERCLOCKWISE";
+  Serial.println("Motor: Sentido anti-horário");
+  actionComunication("Motor: Anti-horario");
+}
+
+void motorStop() {
+  digitalWrite(MOTOR_PIN1, LOW);
+  digitalWrite(MOTOR_PIN2, LOW);
+  Motor_State = "STOPPED";
+  Serial.println("Motor: Parado");
+  actionComunication("Motor: Parado");
+}
+
+void motorReverse() {
+  if (Motor_State == "CLOCKWISE") {
+    motorCounterClockwise();
+  } else if (Motor_State == "COUNTERCLOCKWISE") {
+    motorClockwise();
   }
 }
 
@@ -417,6 +493,11 @@ void setup() {
   ledcAttachChannel(LED_4_PIN, pwmled4Freq, pwmled4Resolution, pwmled4Channel);
 
  
+  // Motor configuration
+  pinMode(MOTOR_PIN1, OUTPUT);
+  pinMode(MOTOR_PIN2, OUTPUT);
+  motorStop(); // Initialize motor in stopped state
+
   // Slide switch configuration
   pinMode(SLIDE_SWITCH_PIN, INPUT_PULLUP);
   // Pushbutton configuration
@@ -729,6 +810,28 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send(400, "text/plain", "Missing 'duty' parameter");
     }
   });
+
+  // Routes to control Motor
+  server.on("/motor/clockwise", HTTP_GET, [](AsyncWebServerRequest *request) {
+    motorClockwise();
+    request->send(LittleFS, "/home.html", String(), false, processor);
+  });
+
+  server.on("/motor/counterclockwise", HTTP_GET, [](AsyncWebServerRequest *request) {
+    motorCounterClockwise();
+    request->send(LittleFS, "/home.html", String(), false, processor);
+  });
+
+  server.on("/motor/stop", HTTP_GET, [](AsyncWebServerRequest *request) {
+    motorStop();
+    request->send(LittleFS, "/home.html", String(), false, processor);
+  });
+
+  server.on("/motor/reverse", HTTP_GET, [](AsyncWebServerRequest *request) {
+    motorReverse();
+    request->send(LittleFS, "/home.html", String(), false, processor);
+  });
+
   // Route to control ServoMotor angle
   server.on("/servo", HTTP_GET, [] (AsyncWebServerRequest *request) {
     Remote_Client_IP = request->client()->remoteIP().toString();
