@@ -1,12 +1,12 @@
 {
-  "wifiSsid": "Fibra 353",
-  "wifiPassword": "juan2015casa",
+  "wifiSsid": "ffff",
+  "wifiPassword": "fff",
   "ntpServer": "time.google.com",
   "timezoneOffset": -3,
   "emailAlarm": "juanpedro.bc22@gmail.com",
   "smtpServer": "smtp.gmail.com",
   "smtpPort": 587,
-  "emailSender": "espproject78@gmail.com",
-  "emailPassword": "iaknetvwqtepxmxw",
+  "emailSender": "fff",
+  "emailPassword": "fff",
   "emailSubject": "Alerta ESP32 - Sistema de Alarme"
 }
