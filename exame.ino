@@ -10,7 +10,6 @@
 #include <ArduinoJson.h>
 #include <FS.h>
 #include <time.h>
-#include <Wire.h> 
 #include <LiquidCrystal_I2C.h> // by Frank de Brabander v 1.1.2
 
 const int Ncols = 16;
