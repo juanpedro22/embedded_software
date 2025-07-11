@@ -220,28 +220,48 @@ body {
       </div>
     </div>
 
-        <!-- Motor -->
+        <!-- Motores CC -->
     <div class="col-12 col-md-6 col-lg-4">
       <div class="card h-100 shadow-sm">
-        <div class="card-body text-center py-2 px-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <h5 class="card-title">Motor CC</h5>
+        <div class="card-body text-center py-2 px-2">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title">Motores CC</h5>
             <i class="bi bi-gear-wide-connected card-icon"></i>
           </div>
-          <p>Direção: <strong>%MOTOR_DIRECTION%</strong></p>
-          <div class="mb-1">
-            <i class="bi %MOTOR_ICON%" style="font-size:2.5rem;"></i>
+          
+          <!-- Motor 1 -->
+          <div class="mb-2">
+            <h6 class="text-info mb-1">
+              <i class="bi bi-gear" style="font-size:0.8rem;"></i> Motor 1: <strong>%MOTOR_DIRECTION%</strong>
+            </h6>
+            <div class="mb-1">
+              <i class="bi %MOTOR_ICON%" style="font-size:1.2rem;"></i>
+            </div>
+            <div class="row g-1">
+              <div class="col-6">%MOTOR_BUTTON_1%</div>
+              <div class="col-6">%MOTOR_BUTTON_2%</div>
+            </div>
           </div>
-          <div class="d-grid gap-1 mt-2">
-            %MOTOR_BUTTON_1%
-            %MOTOR_BUTTON_2%
+          
+          <hr class="my-2">
+          
+          <!-- Motor 2 -->
+          <div class="mb-1">
+            <h6 class="text-primary mb-1">
+              <i class="bi bi-gear" style="font-size:0.8rem;"></i> Motor 2: <strong>%MOTOR2_DIRECTION%</strong>
+            </h6>
+            <div class="mb-1">
+              <i class="bi %MOTOR2_ICON%" style="font-size:1.2rem;"></i>
+            </div>
+            <div class="row g-1">
+              <div class="col-6">%MOTOR2_BUTTON_1%</div>
+              <div class="col-6">%MOTOR2_BUTTON_2%</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Info Card -->
-   
     <!-- Info Card -->
     <div class="col-12 col-lg-8">
       <div class="card h-100 shadow-sm">

@@ -1,6 +1,6 @@
 {
-  "wifiSsid": "ffff",
-  "wifiPassword": "ffff",
+  "wifiSsid": "APTO 41",
+  "wifiPassword": "othon!1234",
   "ntpServer": "time.google.com",
   "timezoneOffset": -3,
   "emailAlarm": "espproject78@gmail.com"
