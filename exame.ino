@@ -28,6 +28,10 @@ int lastLed4Duty = -1;
 #define MOTOR_PIN1 5          // ESP32 pin IO5 connected to motor driver IN1
 #define MOTOR_PIN2 23         // ESP32 pin IO23 connected to motor driver IN2
 
+// Motor 2 CC configuration:
+#define MOTOR2_PIN1 21        // ESP32 pin IO21 connected to motor 2 driver IN1
+#define MOTOR2_PIN2 22        // ESP32 pin IO22 connected to motor 2 driver IN2
+
 // Pushbutton configuration:
 #define PUSHBUTTON_PIN 18     // ESP32 pin IO33 connected to pushbutton
 
@@ -119,6 +123,7 @@ int Buzzer_State = LOW; // Buzzer state (HIGH/LOW)
 
 // Motor CC variables
 String Motor_State = "STOPPED"; // Motor state (STOPPED, CLOCKWISE, COUNTERCLOCKWISE)
+String Motor2_State = "STOPPED"; // Motor 2 state (STOPPED, CLOCKWISE, COUNTERCLOCKWISE)
 
 // Alarm system variables
 volatile bool alarmTriggered = false;
@@ -359,22 +364,59 @@ String processor(const String& var){
   }
   if(var == "MOTOR_BUTTON_1"){
     if(Motor_State == "STOPPED") {
-      return "<a href=\"/motor/clockwise\" class=\"btn btn-success btn-sm\">Acionar sentido horário</a>";
+      return "<a href=\"/motor/clockwise\" class=\"btn btn-success btn-sm py-0 px-1 w-100\" style=\"font-size:0.7rem;\">Horário</a>";
     } else {
-      return "<a href=\"/motor/reverse\" class=\"btn btn-warning btn-sm\">Inverter rotação</a>";
+      return "<a href=\"/motor/reverse\" class=\"btn btn-warning btn-sm py-0 px-1 w-100\" style=\"font-size:0.7rem;\">Inverter</a>";
     }
   }
   if(var == "MOTOR_BUTTON_2"){
     if(Motor_State == "STOPPED") {
-      return "<a href=\"/motor/counterclockwise\" class=\"btn btn-primary btn-sm\">Acionar sentido anti-horário</a>";
+      return "<a href=\"/motor/counterclockwise\" class=\"btn btn-primary btn-sm py-0 px-1 w-100\" style=\"font-size:0.7rem;\">Anti-hor</a>";
     } else {
-      return "<a href=\"/motor/stop\" class=\"btn btn-danger btn-sm\">Parar</a>";
+      return "<a href=\"/motor/stop\" class=\"btn btn-danger btn-sm py-0 px-1 w-100\" style=\"font-size:0.7rem;\">Parar</a>";
     }
   }
   if(var == "MOTOR_ICON"){
     if(Motor_State == "CLOCKWISE") {
       return "bi-arrow-clockwise text-success";
     } else if(Motor_State == "COUNTERCLOCKWISE") {
+      return "bi-arrow-counterclockwise text-primary";
+    } else {
+      return "bi-dash-circle text-secondary";
+    }
+  }
+
+  // Motor 2 variables
+  if(var == "MOTOR2_STATE"){
+    return Motor2_State;
+  }
+  if(var == "MOTOR2_DIRECTION"){
+    if(Motor2_State == "CLOCKWISE") {
+      return "Horário";
+    } else if(Motor2_State == "COUNTERCLOCKWISE") {
+      return "Anti-horário";
+    } else {
+      return "Parado";
+    }
+  }
+  if(var == "MOTOR2_BUTTON_1"){
+    if(Motor2_State == "STOPPED") {
+      return "<a href=\"/motor2/clockwise\" class=\"btn btn-success btn-sm py-0 px-1 w-100\" style=\"font-size:0.7rem;\">Horário</a>";
+    } else {
+      return "<a href=\"/motor2/reverse\" class=\"btn btn-warning btn-sm py-0 px-1 w-100\" style=\"font-size:0.7rem;\">Inverter</a>";
+    }
+  }
+  if(var == "MOTOR2_BUTTON_2"){
+    if(Motor2_State == "STOPPED") {
+      return "<a href=\"/motor2/counterclockwise\" class=\"btn btn-primary btn-sm py-0 px-1 w-100\" style=\"font-size:0.7rem;\">Anti-hor</a>";
+    } else {
+      return "<a href=\"/motor2/stop\" class=\"btn btn-danger btn-sm py-0 px-1 w-100\" style=\"font-size:0.7rem;\">Parar</a>";
+    }
+  }
+  if(var == "MOTOR2_ICON"){
+    if(Motor2_State == "CLOCKWISE") {
+      return "bi-arrow-clockwise text-success";
+    } else if(Motor2_State == "COUNTERCLOCKWISE") {
       return "bi-arrow-counterclockwise text-primary";
     } else {
       return "bi-dash-circle text-secondary";
@@ -424,6 +466,39 @@ void motorReverse() {
     motorCounterClockwise();
   } else if (Motor_State == "COUNTERCLOCKWISE") {
     motorClockwise();
+  }
+}
+
+// Motor 2 control functions
+void motor2Clockwise() {
+  digitalWrite(MOTOR2_PIN1, HIGH);
+  digitalWrite(MOTOR2_PIN2, LOW);
+  Motor2_State = "CLOCKWISE";
+  Serial.println("Motor 2: Sentido horário");
+  actionComunication("Motor 2: Horario");
+}
+
+void motor2CounterClockwise() {
+  digitalWrite(MOTOR2_PIN1, LOW);
+  digitalWrite(MOTOR2_PIN2, HIGH);
+  Motor2_State = "COUNTERCLOCKWISE";
+  Serial.println("Motor 2: Sentido anti-horário");
+  actionComunication("Motor 2: Anti-horario");
+}
+
+void motor2Stop() {
+  digitalWrite(MOTOR2_PIN1, LOW);
+  digitalWrite(MOTOR2_PIN2, LOW);
+  Motor2_State = "STOPPED";
+  Serial.println("Motor 2: Parado");
+  actionComunication("Motor 2: Parado");
+}
+
+void motor2Reverse() {
+  if (Motor2_State == "CLOCKWISE") {
+    motor2CounterClockwise();
+  } else if (Motor2_State == "COUNTERCLOCKWISE") {
+    motor2Clockwise();
   }
 }
 
@@ -496,6 +571,11 @@ void setup() {
   pinMode(MOTOR_PIN1, OUTPUT);
   pinMode(MOTOR_PIN2, OUTPUT);
   motorStop(); // Initialize motor in stopped state
+
+  // Motor 2 configuration
+  pinMode(MOTOR2_PIN1, OUTPUT);
+  pinMode(MOTOR2_PIN2, OUTPUT);
+  motor2Stop(); // Initialize motor 2 in stopped state
 
   // Slide switch configuration
   pinMode(SLIDE_SWITCH_PIN, INPUT_PULLUP);
@@ -828,6 +908,27 @@ server.on("/get_pwm", HTTP_GET, [](AsyncWebServerRequest *request){
 
   server.on("/motor/reverse", HTTP_GET, [](AsyncWebServerRequest *request) {
     motorReverse();
+    request->send(LittleFS, "/home.html", String(), false, processor);
+  });
+
+  // Routes to control Motor 2
+  server.on("/motor2/clockwise", HTTP_GET, [](AsyncWebServerRequest *request) {
+    motor2Clockwise();
+    request->send(LittleFS, "/home.html", String(), false, processor);
+  });
+
+  server.on("/motor2/counterclockwise", HTTP_GET, [](AsyncWebServerRequest *request) {
+    motor2CounterClockwise();
+    request->send(LittleFS, "/home.html", String(), false, processor);
+  });
+
+  server.on("/motor2/stop", HTTP_GET, [](AsyncWebServerRequest *request) {
+    motor2Stop();
+    request->send(LittleFS, "/home.html", String(), false, processor);
+  });
+
+  server.on("/motor2/reverse", HTTP_GET, [](AsyncWebServerRequest *request) {
+    motor2Reverse();
     request->send(LittleFS, "/home.html", String(), false, processor);
   });
 

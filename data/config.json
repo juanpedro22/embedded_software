@@ -1,7 +1,7 @@
 {
-  "wifiSsid": "ffff",
-  "wifiPassword": "ffff",
+  "wifiSsid": "fffff",
+  "wifiPassword": "fffff",
   "ntpServer": "time.google.com",
   "timezoneOffset": -3,
-  "emailAlarm": "espproject78@gmail.com"
+  "emailAlarm": "ffffffff"
 }
