@@ -6,7 +6,6 @@
 #include <ESPAsyncWebServer.h>
 //See https://www.arduino.cc/reference/en/libraries/espasyncwebserver/
 #include <LittleFS.h>
-#include <Arduino.h>
 #include <ArduinoJson.h>
 #include <FS.h>
 #include <time.h>
@@ -540,6 +539,18 @@ void setup() {
   }
   loadConfig();
 
+  // Motor 1 configuration
+  pinMode(MOTOR_PIN1, OUTPUT);
+  pinMode(MOTOR_PIN2, OUTPUT);
+  digitalWrite(MOTOR_PIN1, LOW);
+  digitalWrite(MOTOR_PIN2, LOW);
+
+  // Motor 2 configuration
+  pinMode(MOTOR2_PIN1, OUTPUT);
+  pinMode(MOTOR2_PIN2, OUTPUT);
+  digitalWrite(MOTOR2_PIN1, LOW);
+  digitalWrite(MOTOR2_PIN2, LOW);
+
   lcd.init();
   lcd.backlight();
 
@@ -560,22 +571,15 @@ void setup() {
   pinMode(LED_3_PIN, OUTPUT);
   pinMode(POT_PIN, INPUT);
   pinMode(SLIDE_SWITCH_PIN, INPUT_PULLUP);
+
+  
+
   // PWM setup
   ledcAttachChannel(LED_3_PIN, pwmFreq, pwmResolution, pwmChannel);
   //led
   pinMode(LED_4_PIN, OUTPUT);
   ledcAttachChannel(LED_4_PIN, pwmled4Freq, pwmled4Resolution, pwmled4Channel);
 
- 
-  // Motor configuration
-  pinMode(MOTOR_PIN1, OUTPUT);
-  pinMode(MOTOR_PIN2, OUTPUT);
-  motorStop(); // Initialize motor in stopped state
-
-  // Motor 2 configuration
-  pinMode(MOTOR2_PIN1, OUTPUT);
-  pinMode(MOTOR2_PIN2, OUTPUT);
-  motor2Stop(); // Initialize motor 2 in stopped state
 
   // Slide switch configuration
   pinMode(SLIDE_SWITCH_PIN, INPUT_PULLUP);
